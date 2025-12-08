@@ -6,16 +6,17 @@
 
 ## Structure
 - `src/app.js` – Express app, middleware, routing
-- `src/routes/` – Router entrypoints (`index.js`)
-- `src/controllers/` – Request handlers (e.g., `healthController.js`)
-- `bin/www` – HTTP server bootstrap (debug namespace `onpac-api:server`), used by npm scripts
+- `src/routes/` – Router entrypoints (`index.js`, `health.js`, `claim.js`)
+- `src/controllers/` – Request handlers (e.g., `healthController.js`, `claimController.js`)
+- `src/bin/www` – HTTP server bootstrap (debug namespace `onpac-api:server`), used by npm scripts
 - `.env.example` – Environment template
 
 ## Setup
 1. Install deps: `npm install`
 2. Env: copy `.env.example` to `.env`; adjust `PORT`, `DEBUG`
-3. Run dev/local: `npm start` (or `npm run dev`) – starts via `bin/www`
+3. Run dev/local: `npm start` (or `npm run dev`) – starts via `src/bin/www`
    - Dev script uses `nodemon --legacy-watch` for WSL-friendly auto reloads.
+4. For PDF inputs: ensure Poppler (`pdftoppm`) and Ghostscript (`gs`) are installed and in PATH (see `docs/project-setup.md`).
 4. Health check: `GET /health` → `{ "status": "ok" }`
 
 ## Logging
