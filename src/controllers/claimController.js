@@ -4,6 +4,7 @@ const path = require('path');
 const sharp = require('sharp');
 const { promisify } = require('util');
 const { execFile } = require('child_process');
+const { requestVisionSchemaCompletion } = require('../services/llmService');
 const createDebug = require('debug');
 
 const debug = createDebug('app:controller:claim');
@@ -19,17 +20,83 @@ async function preApprovalJson(req, res) {
   debug('Received pre-approval OCR request for %d paths', paths.length);
 
   try {
+    const systemPromptPath = path.join(__dirname, '..', 'prompts', 'claims', 'claim-preapproval-system.md');
+    const jsonSchemaPath = path.join(
+      __dirname,
+      '..',
+      'prompts',
+      'claims',
+      'claim-preapproval-json-schema.json'
+    );
+
+    const systemPrompt = await fs.promises.readFile(systemPromptPath, 'utf8');
+    const jsonSchemaRaw = await fs.promises.readFile(jsonSchemaPath, 'utf8');
+    const jsonSchema = JSON.parse(jsonSchemaRaw);
+
     const conversions = await convertFilesToJpeg300ppi(paths);
 
-    // TODO: Integrate with LM Studio OCR processing using `conversions.outputPath`.
-    return res.status(202).json({
-      message: 'OCR request accepted; conversion completed; LLM OCR not yet implemented',
-      conversions,
+    const successfulConversions = conversions.filter(
+      (item) => item.status === 'success' && item.outputPath
+    );
+
+    if (successfulConversions.length === 0) {
+      return res.status(500).json({
+        error: 'No successful image conversions available for LLM processing',
+        conversions,
+      });
+    }
+
+    const base64Images = [];
+
+    for (const conversion of successfulConversions) {
+      const imageBuffer = await fs.promises.readFile(conversion.outputPath);
+      base64Images.push(imageBuffer.toString('base64'));
+    }
+
+    const llmResponse = await requestVisionSchemaCompletion({
+      base64Images,
+      systemPrompt,
+      jsonSchema,
     });
+
+    const structured = extractStructuredJson(llmResponse);
+
+    return res.status(200).json(structured);
   } catch (error) {
     debug('Conversion error: %s', error.message);
-    return res.status(500).json({ error: 'Failed to prepare files for OCR', detail: error.message });
+    return res.status(500).json({
+      error: 'Failed to process OCR with LLM',
+      detail: error.message,
+    });
   }
+}
+
+function extractStructuredJson(llmResponse) {
+  const choice = llmResponse?.choices?.[0];
+  if (!choice) {
+    throw new Error('LLM response contained no choices');
+  }
+
+  const content = choice.message?.content;
+
+  if (typeof content === 'string') {
+    return JSON.parse(content);
+  }
+
+  if (Array.isArray(content)) {
+    const text = content
+      .filter((part) => part && part.type === 'text' && typeof part.text === 'string')
+      .map((part) => part.text)
+      .join('');
+
+    if (!text) {
+      throw new Error('LLM response content is empty');
+    }
+
+    return JSON.parse(text);
+  }
+
+  throw new Error('Unsupported LLM content format');
 }
 
 async function convertFilesToJpeg300ppi(paths) {

@@ -1,0 +1,62 @@
+{
+  "type": "object",
+  "properties": {
+    "main_sheet": {
+      "type": "object",
+      "description": "Single summary object extracted from Main Sheet.",
+      "properties": {
+        "insurer": { "type": "string" },
+        "policy_no": { "type": "string" },
+        "last_first_name": { "type": "string" },
+        "diagnosis_code": { "type": "string" },
+        "diagnosis_description": { "type": "string" },
+        "provider_name": { "type": "string" },
+        "provider_code": { "type": "string" },
+        "incur_date_from": { "type": "string" },
+        "incur_date_to": { "type": "string" },
+        "presented_currency": { "type": "string" },
+        "presented_amount": { "type": "string" },
+        "non_covered_amount": { "type": "string" },
+        "non_covered_remark": { "type": "string" },
+        "final_payable_amount": { "type": "string" },
+        "benefit_type": { "type": "string" },
+        "benefit_head": { "type": "string" },
+        "data_consistency_check_name_date_match": { "type": "string" },
+        "claim_document_consistency_check": { "type": "string" },
+        "prescription_test_validation_result": { "type": "string" },
+        "validation_notes": { "type": "string" },
+        "dx_treatment_consistency_result": { "type": "string" },
+        "dx_treatment_notes": { "type": "string" }
+      }
+    },
+
+    "document_source_summary": {
+      "type": "object",
+      "description": "Single summary object extracted from Document Source Summary sheet.",
+      "properties": {
+        "patient": { "type": "string" },
+        "log_file": { "type": "string" },
+        "medical_record_file": { "type": "string" },
+        "invoice_file": { "type": "string" },
+        "missing_docs": { "type": "string" },
+        "status": { "type": "string" }
+      }
+    },
+
+    "validation_summary": {
+      "type": "array",
+      "description": "Multiple validation line items from Validation Summary sheet.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "patient": { "type": "string" },
+          "item": { "type": "string" },
+          "prescribed_tested": { "type": "string" },
+          "validation_result": { "type": "string" },
+          "dx_treatment_consistency": { "type": "string" },
+          "notes": { "type": "string" }
+        }
+      }
+    }
+  }
+}

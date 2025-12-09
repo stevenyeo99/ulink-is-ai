@@ -1,0 +1,123 @@
+const createDebug = require('debug');
+
+const debug = createDebug('app:service:llm');
+const DEFAULT_ENDPOINT = '/v1/chat/completions';
+const BASE_URL = process.env.LM_URL || process.env.LLM_URL;
+const DEFAULT_MODEL = process.env.MODEL;
+
+function buildImageDataUrl(base64Image) {
+  if (!base64Image || typeof base64Image !== 'string') {
+    throw new Error('base64Image must be a non-empty base64 string');
+  }
+  if (base64Image.startsWith('data:')) {
+    return base64Image;
+  }
+  return `data:image/jpeg;base64,${base64Image}`;
+}
+
+function buildResponseFormat(jsonSchema) {
+  if (!jsonSchema) {
+    return { type: 'json_object' };
+  }
+
+  // Allow callers to pass either the full json_schema payload or just the schema object.
+  if (jsonSchema.type === 'json_schema' && jsonSchema.json_schema) {
+    return jsonSchema;
+  }
+
+  return {
+    type: 'json_schema',
+    json_schema: {
+      name: jsonSchema.name || 'structured_output',
+      schema: jsonSchema.schema || jsonSchema,
+      strict: true,
+    },
+  };
+}
+
+async function requestVisionSchemaCompletion({
+  base64Image,
+  base64Images,
+  systemPrompt,
+  jsonSchema,
+  model = DEFAULT_MODEL,
+}) {
+  if (!BASE_URL) {
+    throw new Error('LM_URL/LLM_URL environment variable is required');
+  }
+  if (!model) {
+    throw new Error('MODEL environment variable is required');
+  }
+  if (!systemPrompt) {
+    throw new Error('systemPrompt is required');
+  }
+
+  const images = normalizeImages(base64Image, base64Images);
+  if (images.length === 0) {
+    throw new Error('At least one base64Image is required');
+  }
+
+  const url = new URL(DEFAULT_ENDPOINT, BASE_URL).toString();
+  const body = {
+    model,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: `JSON schema to follow:\n${JSON.stringify(buildResponseFormat(jsonSchema), null, 2)}`,
+          },
+          ...images.map(({ dataUrl }) => ({
+            type: 'image_url',
+            image_url: { url: dataUrl },
+          })),
+        ],
+      },
+    ],
+    response_format: buildResponseFormat(jsonSchema),
+    temperature: 0,
+  };
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`LLM request failed (${response.status} ${response.statusText}): ${text}`);
+  }
+
+  const data = await response.json();
+  debug('LLM responded with %d choice(s)', Array.isArray(data?.choices) ? data.choices.length : 0);
+  return data;
+}
+
+module.exports = {
+  requestVisionSchemaCompletion,
+};
+
+function normalizeImages(base64Image, base64Images) {
+  const images = [];
+
+  if (Array.isArray(base64Images) && base64Images.length > 0) {
+    for (const entry of base64Images) {
+      if (!entry) continue;
+      if (typeof entry === 'string') {
+        images.push({ dataUrl: buildImageDataUrl(entry) });
+      } else if (typeof entry === 'object' && entry.data) {
+        images.push({ dataUrl: buildImageDataUrl(entry.data) });
+      }
+    }
+  } else if (base64Image) {
+    images.push({ dataUrl: buildImageDataUrl(base64Image) });
+  }
+
+  return images;
+}
