@@ -78,6 +78,7 @@ async function requestVisionSchemaCompletion({
     ],
     response_format: buildResponseFormat(jsonSchema),
     temperature: 0,
+    top_p: 0.5,
   };
 
   const response = await fetch(url, {
@@ -101,6 +102,7 @@ async function requestVisionSchemaCompletion({
 
 module.exports = {
   requestVisionSchemaCompletion,
+  extractStructuredJson,
 };
 
 function normalizeImages(base64Image, base64Images) {
@@ -120,4 +122,32 @@ function normalizeImages(base64Image, base64Images) {
   }
 
   return images;
+}
+
+function extractStructuredJson(llmResponse) {
+  const choice = llmResponse?.choices?.[0];
+  if (!choice) {
+    throw new Error('LLM response contained no choices');
+  }
+
+  const content = choice.message?.content;
+
+  if (typeof content === 'string') {
+    return JSON.parse(content);
+  }
+
+  if (Array.isArray(content)) {
+    const text = content
+      .filter((part) => part && part.type === 'text' && typeof part.text === 'string')
+      .map((part) => part.text)
+      .join('');
+
+    if (!text) {
+      throw new Error('LLM response content is empty');
+    }
+
+    return JSON.parse(text);
+  }
+
+  throw new Error('Unsupported LLM content format');
 }
