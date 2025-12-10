@@ -118,7 +118,7 @@ A later validation pass will compute and fill these.
 3. document_source_summary
 
 - patient = normalized name (same as main_sheet.last_first_name).
-- log_file / medical_record_file / invoice_file = "Present" or "".
+- log_file / medical_record_file / invoice_file = "Provided" or "" (without mention file type).
 - missing_docs = "None" or short text listing missing docs.
 - status = "Complete Set" or "Incomplete".
 

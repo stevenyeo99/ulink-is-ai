@@ -41,9 +41,9 @@ For each invoice_items entry:
   "patient": main_sheet.last_first_name,
   "item": <invoice item description>,
   "prescribed_tested": "Not prescribed",
-  "validation_result": "Billed but not prescribed",
-  "dx_treatment_consistency": "",
-  "notes": "Billed item not mentioned in medical record."
+  "validation_result": "Unjustified",
+  "dx_treatment_consistency": "Appropriate",
+  "notes": "Billed but not prescribed"
 }
 
 Do NOT merge items. One billed item = one row.
@@ -58,7 +58,7 @@ If validation_summary is empty:
 
 If validation_summary has 1+ items:
 - main_sheet.prescription_test_validation_result = "Unjustified billed items found"
-- main_sheet.validation_notes = "Some billed items were not supported by the medical record."
+- main_sheet.validation_notes = "Items billed but not prescribed: " (specify the list of invoice item)
 
 ────────────────────────────────────────
 3. DX–TREATMENT CONSISTENCY (simple rules)
