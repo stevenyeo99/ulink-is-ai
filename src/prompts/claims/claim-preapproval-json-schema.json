@@ -3,58 +3,187 @@
   "properties": {
     "main_sheet": {
       "type": "object",
-      "description": "Single summary object extracted from Main Sheet.",
+      "description": "Single summary object combining information from LOG, Medical Visit Summary and Invoice for ONE claim case.",
       "properties": {
-        "insurer": { "type": "string" },
-        "policy_no": { "type": "string" },
-        "last_first_name": { "type": "string" },
-        "diagnosis_code": { "type": "string" },
-        "diagnosis_description": { "type": "string" },
-        "provider_name": { "type": "string" },
-        "provider_code": { "type": "string" },
-        "incur_date_from": { "type": "string" },
-        "incur_date_to": { "type": "string" },
-        "presented_currency": { "type": "string" },
-        "presented_amount": { "type": "string" },
-        "non_covered_amount": { "type": "string" },
-        "non_covered_remark": { "type": "string" },
-        "final_payable_amount": { "type": "string" },
-        "benefit_type": { "type": "string" },
-        "benefit_head": { "type": "string" },
-        "data_consistency_check_name_date_match": { "type": "string" },
-        "claim_document_consistency_check": { "type": "string" },
-        "prescription_test_validation_result": { "type": "string" },
-        "validation_notes": { "type": "string" },
-        "dx_treatment_consistency_result": { "type": "string" },
-        "dx_treatment_notes": { "type": "string" }
+        "insurer": {
+          "type": "string",
+          "description": "Insurer name taken from the LOG body text (e.g. 'Ulink Assist Company Limited hereby undertakes to pay...'). Do NOT use logo text."
+        },
+        "policy_no": {
+          "type": "string",
+          "description": "Policy No. from the LOG row labelled 'Policy No.'."
+        },
+        "last_first_name": {
+          "type": "string",
+          "description": "Patient name from LOG or Medical Visit Summary. Remove Myanmar honorifics (Ko, Ma, U, Daw, etc.) and convert to UPPERCASE."
+        },
+        "diagnosis_code": {
+          "type": "string",
+          "description": "Diagnosis code if explicitly printed (ICD or internal). If no code is printed, leave empty."
+        },
+        "diagnosis_description": {
+          "type": "string",
+          "description": "Primary diagnosis text, preferably from Medical Visit Summary 'Diagnosis' section (e.g. 'Acute pulpitis at 21'). Fallback: LOG 'Diagnosis'."
+        },
+        "provider_name": {
+          "type": "string",
+          "description": "Hospital/Clinic name, preferably from Invoice header (e.g. 'Pun Hlaing Hospital (Mandalay 73)'). Fallback: LOG or Medical Visit Summary."
+        },
+        "provider_code": {
+          "type": "string",
+          "description": "Provider code inferred from provider_name using rules in system prompt (e.g. contains 'Mandalay' → '031095'). If no match, empty string."
+        },
+        "incur_date_from": {
+          "type": "string",
+          "description": "Main visit/appointment date for this encounter from LOG 'Appointment/Admission date' or Medical Visit Summary 'Visit/Adm. Date'."
+        },
+        "incur_date_to": {
+          "type": "string",
+          "description": "End/discharge date if available; otherwise same as incur_date_from."
+        },
+        "presented_currency": {
+          "type": "string",
+          "description": "Currency for invoice amounts (e.g. 'MMK', 'USD') if clearly printed; else empty."
+        },
+        "presented_amount": {
+          "type": "string",
+          "description": "Total billed amount from Invoice summary (e.g. 'Gross Amount' or 'Net Amount' or 'Payer Amount'). Use plain numeric string without commas, e.g. '221200.94'."
+        },
+        "non_covered_amount": {
+          "type": "string",
+          "description": "Total of billed items detected as vitamins/supplements or excluded items according to system prompt rules. '0' if none."
+        },
+        "non_covered_remark": {
+          "type": "string",
+          "description": "Short explanation of non-covered items (e.g. 'Infection control charge treated as non-covered') or 'Nil – no non-covered items detected.' if none."
+        },
+        "final_payable_amount": {
+          "type": "string",
+          "description": "Presented amount minus non_covered_amount. If no deduction, same as presented_amount."
+        },
+        "benefit_type": {
+          "type": "string",
+          "description": "Benefit type determined from documents: 'OP', 'DT', 'VS', or 'IP', based on rules in system prompt (e.g. dental → 'DT')."
+        },
+        "benefit_head": {
+          "type": "string",
+          "description": "Benefit head (e.g. 'DENT') determined from diagnosis and invoice items."
+        },
+        "data_consistency_check_name_date_match": {
+          "type": "string",
+          "description": "Summary label of whether patient name and key dates match across LOG, Medical Record and Invoice (e.g. 'Matched', 'Name matched, date mismatch', 'Incomplete')."
+        },
+        "claim_document_consistency_check": {
+          "type": "string",
+          "description": "Overall remark on whether LOG, Medical Record, and Invoice belong to the same encounter."
+        },
+        "prescription_test_validation_result": {
+          "type": "string",
+          "description": "High-level result of comparing Medical Record orders/treatment vs Invoice items (e.g. 'All billed items justified' or 'Unjustified — billed item not prescribed')."
+        },
+        "validation_notes": {
+          "type": "string",
+          "description": "Free-text notes explaining the prescription vs bill validation result."
+        },
+        "dx_treatment_consistency_result": {
+          "type": "string",
+          "description": "Overall judgement of diagnosis vs treatment appropriateness (e.g. 'Consistent', 'Questionable', 'Red-flag')."
+        },
+        "dx_treatment_notes": {
+          "type": "string",
+          "description": "Short explanation for dx_treatment_consistency_result."
+        }
       }
     },
 
     "document_source_summary": {
       "type": "object",
-      "description": "Single summary object extracted from Document Source Summary sheet.",
+      "description": "Document-level completeness summary for this claim case.",
       "properties": {
-        "patient": { "type": "string" },
-        "log_file": { "type": "string" },
-        "medical_record_file": { "type": "string" },
-        "invoice_file": { "type": "string" },
-        "missing_docs": { "type": "string" },
-        "status": { "type": "string" }
+        "patient": {
+          "type": "string",
+          "description": "Normalized patient name (same rule as main_sheet.last_first_name)."
+        },
+        "log_file": {
+          "type": "string",
+          "description": "If a LOG image is present, set to a short label such as 'LOG present'; otherwise empty."
+        },
+        "medical_record_file": {
+          "type": "string",
+          "description": "If a Medical Visit Summary / medical record image is present, set to a short label; otherwise empty."
+        },
+        "invoice_file": {
+          "type": "string",
+          "description": "If an Invoice/CREDIT Bill OP image is present, set to a short label; otherwise empty."
+        },
+        "missing_docs": {
+          "type": "string",
+          "description": "Describe missing document types, e.g. 'Missing invoice', 'Missing medical record'. If all present, 'None'."
+        },
+        "status": {
+          "type": "string",
+          "description": "High-level document status such as 'Complete Set', 'Incomplete', etc."
+        }
       }
     },
 
-    "validation_summary": {
+    "invoice_items": {
       "type": "array",
-      "description": "Multiple validation line items from Validation Summary sheet.",
+      "description": "List of all billed invoice line items extracted from the invoice. Each object captures the item description and its billed amount.",
       "items": {
         "type": "object",
         "properties": {
-          "patient": { "type": "string" },
-          "item": { "type": "string" },
-          "prescribed_tested": { "type": "string" },
-          "validation_result": { "type": "string" },
-          "dx_treatment_consistency": { "type": "string" },
-          "notes": { "type": "string" }
+          "description": {
+            "type": "string",
+            "description": "Exact description of the invoice line item (as printed)."
+          },
+          "amount": {
+            "type": "string",
+            "description": "Billed amount for this item. Numeric string without commas (e.g. '25000')."
+          }
+        }
+      }
+  },
+
+  "medical_items": {
+    "type": "array",
+    "description": "List of invoice item descriptions that are supported by the Medical Record (matched items).",
+    "items": {
+      "type": "string",
+      "description": "Invoice item description that has a corresponding match in the Medical Record."
+    }
+  },
+
+    "validation_summary": {
+      "type": "array",
+      "description": "Invoice-only validation: includes ONLY billed items that do NOT appear in the medical record. If there are no such mismatches, this array MUST be empty. If any billed item is not found in the medical record, this array MUST contain one object per mismatched billed item.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "patient": {
+            "type": "string",
+            "description": "Normalized patient name (same as main_sheet.last_first_name)."
+          },
+          "item": {
+            "type": "string",
+            "description": "Description of the billed item from the invoice that is NOT found anywhere in the medical record (e.g. 'Specialist Consultation Fee', 'OPD Facility Fee', 'Infection Control Charges', 'Syringe Disposable')."
+          },
+          "prescribed_tested": {
+            "type": "string",
+            "description": "Always the exact text 'Not prescribed' because this section only includes billed items that do not appear in the medical record."
+          },
+          "validation_result": {
+            "type": "string",
+            "description": "Always 'Billed but not prescribed'."
+          },
+          "dx_treatment_consistency": {
+            "type": "string",
+            "description": "Usually an empty string ''. Can be 'Questionable' or 'Red-flag' if this billed item also raises a clear Dx–Treatment concern."
+          },
+          "notes": {
+            "type": "string",
+            "description": "Short note explaining why this billed item is considered not prescribed (e.g. 'Billed but not in MR', 'Administrative charge not listed in medical record')."
+          }
         }
       }
     }

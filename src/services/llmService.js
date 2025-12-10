@@ -4,6 +4,7 @@ const debug = createDebug('app:service:llm');
 const DEFAULT_ENDPOINT = '/v1/chat/completions';
 const BASE_URL = process.env.LM_URL || process.env.LLM_URL;
 const DEFAULT_MODEL = process.env.MODEL;
+const DEFAULT_ASSISTANT_MODEL = process.env.MODEL_ASSISTANT;
 
 function buildImageDataUrl(base64Image) {
   if (!base64Image || typeof base64Image !== 'string') {
@@ -33,6 +34,24 @@ function buildResponseFormat(jsonSchema) {
       strict: true,
     },
   };
+}
+
+function buildAssistantResponseFormat(jsonSchema) {
+  const responseFormat = buildResponseFormat(jsonSchema);
+
+  // Some providers disallow json_object; fall back to a permissive json_schema.
+  if (!responseFormat || responseFormat.type === 'json_object') {
+    return {
+      type: 'json_schema',
+      json_schema: {
+        name: 'structured_output',
+        schema: { type: 'object' },
+        strict: true,
+      },
+    };
+  }
+
+  return responseFormat;
 }
 
 async function requestVisionSchemaCompletion({
@@ -102,8 +121,74 @@ async function requestVisionSchemaCompletion({
 
 module.exports = {
   requestVisionSchemaCompletion,
+  requestAssistantJsonCompletion,
   extractStructuredJson,
 };
+
+async function requestAssistantJsonCompletion({
+  systemPrompt,
+  inputJson,
+  jsonSchema,           // now optional
+  model = DEFAULT_ASSISTANT_MODEL,
+}) {
+  if (!BASE_URL) {
+    throw new Error('LM_URL/LLM_URL environment variable is required');
+  }
+  if (!model) {
+    throw new Error('MODEL_ASSISTANT environment variable is required for assistant LLM requests');
+  }
+  if (!systemPrompt) {
+    throw new Error('systemPrompt is required');
+  }
+  if (inputJson === undefined || inputJson === null) {
+    throw new Error('inputJson is required');
+  }
+
+  const url = new URL(DEFAULT_ENDPOINT, BASE_URL).toString();
+
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    {
+      role: 'user',
+      content: typeof inputJson === 'string'
+        ? inputJson
+        : JSON.stringify(inputJson),
+    },
+  ];
+
+  const body = {
+    model,
+    messages,
+    temperature: 0,
+    top_p: 0.5,
+  };
+
+  // ❗ Only use response_format when a schema is provided (e.g. Pass 1)
+  if (jsonSchema) {
+    body.response_format = buildAssistantResponseFormat(jsonSchema);
+  }
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Assistant LLM request failed (${response.status} ${response.statusText}): ${text}`);
+  }
+
+  const data = await response.json();
+  debug(
+    'Assistant LLM responded with %d choice(s)',
+    Array.isArray(data?.choices) ? data.choices.length : 0
+  );
+  return data;
+}
 
 function normalizeImages(base64Image, base64Images) {
   const images = [];

@@ -1,6 +1,10 @@
 const fs = require('fs');
 const path = require('path');
-const { requestVisionSchemaCompletion, extractStructuredJson } = require('../services/llmService');
+const {
+  requestVisionSchemaCompletion,
+  requestAssistantJsonCompletion,
+  extractStructuredJson,
+} = require('../services/llmService');
 const { convertFilesToJpeg300ppi } = require('../services/imageService');
 const { correctInsurerName } = require('../services/insurerService');
 const createDebug = require('debug');
@@ -18,6 +22,13 @@ async function preApprovalJson(req, res) {
 
   try {
     const systemPromptPath = path.join(__dirname, '..', 'prompts', 'claims', 'claim-preapproval-system.md');
+    const validatePromptPath = path.join(
+      __dirname,
+      '..',
+      'prompts',
+      'claims',
+      'claim-preapproval-validate-system.md'
+    );
     const jsonSchemaPath = path.join(
       __dirname,
       '..',
@@ -27,6 +38,7 @@ async function preApprovalJson(req, res) {
     );
 
     const systemPrompt = await fs.promises.readFile(systemPromptPath, 'utf8');
+    const validatePrompt = await fs.promises.readFile(validatePromptPath, 'utf8');
     const jsonSchemaRaw = await fs.promises.readFile(jsonSchemaPath, 'utf8');
     const jsonSchema = JSON.parse(jsonSchemaRaw);
 
@@ -56,10 +68,19 @@ async function preApprovalJson(req, res) {
       jsonSchema,
     });
 
+    // OCR LLM JSON Response
     const structured = extractStructuredJson(llmResponse);
-    await applyInsurerCorrection(structured);
 
-    return res.status(200).json(structured);
+    // Call OpenAI LLM to make descision on validity
+    const validateResponse = await requestAssistantJsonCompletion({
+      systemPrompt: validatePrompt,
+      inputJson: structured,
+    });
+
+    // Final Json Response from LLM (OpenAI)
+    const validated = extractStructuredJson(validateResponse);
+
+    return res.status(200).json(validated);
   } catch (error) {
     debug('Conversion error: %s', error.message);
     return res.status(500).json({
@@ -84,6 +105,10 @@ async function applyInsurerCorrection(structured) {
   }
 
   const rawInsurer = mainSheet.insurer;
+  delete mainSheet.insurer_raw;
+  delete mainSheet.insurer_match_score;
+  delete mainSheet.insurer_best_match;
+
   if (!rawInsurer) {
     return;
   }
@@ -91,11 +116,13 @@ async function applyInsurerCorrection(structured) {
   const { correctedName, score, bestMatch } = await correctInsurerName(rawInsurer);
 
   if (correctedName && correctedName !== rawInsurer) {
-    mainSheet.insurer_raw = rawInsurer;
+    debug(
+      'Corrected insurer name from "%s" to "%s" (score: %s, bestMatch: %s)',
+      rawInsurer,
+      correctedName,
+      score,
+      bestMatch
+    );
     mainSheet.insurer = correctedName;
-    mainSheet.insurer_match_score = score;
-    if (bestMatch) {
-      mainSheet.insurer_best_match = bestMatch;
-    }
   }
 }
