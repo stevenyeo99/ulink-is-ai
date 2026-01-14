@@ -3,6 +3,12 @@ const path = require('path');
 const { ImapFlow } = require('imapflow');
 const { simpleParser } = require('mailparser');
 const createDebug = require('debug');
+const {
+  requestAssistantJsonCompletion,
+  extractStructuredJson,
+} = require('./llmService');
+const { processPreApproval } = require('./claimService');
+const { replyNoAction, replyPreApproval } = require('./emailReplyService');
 
 const debug = createDebug('app:service:email');
 
@@ -81,6 +87,29 @@ function sanitizeFilename(value) {
     .slice(0, 120);
 }
 
+function isSupportedClaimAttachment(attachment) {
+  if (!attachment) {
+    return false;
+  }
+  if (attachment.contentType === 'application/pdf') {
+    return true;
+  }
+  if (typeof attachment.contentType === 'string' && attachment.contentType.startsWith('image/')) {
+    return true;
+  }
+  const ext = path.extname(attachment.filename || '').toLowerCase();
+  return ['.pdf', '.png', '.jpg', '.jpeg', '.tif', '.tiff', '.bmp', '.gif', '.webp'].includes(ext);
+}
+
+function buildAttachmentMeta(attachment, filePath) {
+  return {
+    filename: attachment.filename || null,
+    contentType: attachment.contentType || null,
+    size: attachment.size || null,
+    path: filePath || null,
+  };
+}
+
 function formatDateParts(date) {
   const value = date instanceof Date ? date : new Date();
   if (Number.isNaN(value.getTime())) {
@@ -101,7 +130,13 @@ function formatDateParts(date) {
 
 async function saveParsedMessage(importBaseDir, message, parsed) {
   if (!importBaseDir) {
-    return null;
+    return {
+      outputDir: null,
+      contentPath: null,
+      metadataPath: null,
+      attachments: [],
+      supportedAttachmentPaths: [],
+    };
   }
 
   const { year, month, day } = formatDateParts(message.internalDate);
@@ -125,6 +160,8 @@ async function saveParsedMessage(importBaseDir, message, parsed) {
   };
   await fs.promises.writeFile(metadataPath, `${JSON.stringify(metadata, null, 2)}\n`);
 
+  const attachments = [];
+  const supportedAttachmentPaths = [];
   if (Array.isArray(parsed.attachments)) {
     for (const attachment of parsed.attachments) {
       if (!attachment || !attachment.content) {
@@ -133,10 +170,69 @@ async function saveParsedMessage(importBaseDir, message, parsed) {
       const safeName = sanitizeFilename(attachment.filename || attachment.checksum || 'attachment');
       const attachmentPath = path.join(outputDir, safeName);
       await fs.promises.writeFile(attachmentPath, attachment.content);
+      attachments.push(buildAttachmentMeta(attachment, attachmentPath));
+      if (isSupportedClaimAttachment(attachment)) {
+        supportedAttachmentPaths.push(attachmentPath);
+      }
     }
   }
 
-  return outputDir;
+  return {
+    outputDir,
+    contentPath,
+    metadataPath,
+    attachments,
+    supportedAttachmentPaths,
+  };
+}
+
+const decisionSchema = {
+  name: 'llm_email_decision',
+  schema: {
+    type: 'object',
+    properties: {
+      action: { type: 'string', enum: ['pre_approval', 'no_action'] },
+      reason: { type: 'string' },
+      confidence: { type: 'number' },
+    },
+    required: ['action'],
+  },
+};
+
+let cachedDecisionPrompts;
+
+async function loadDecisionPrompts() {
+  if (cachedDecisionPrompts) {
+    return cachedDecisionPrompts;
+  }
+  const baseDir = path.join(__dirname, '..', 'prompts', 'llm-descision');
+  const systemPromptPath = path.join(baseDir, 'llm_descision_system_prompt.md');
+  const functionCatalogPath = path.join(baseDir, 'llm_descision_function_catalog.md');
+  const [systemPrompt, functionCatalog] = await Promise.all([
+    fs.promises.readFile(systemPromptPath, 'utf8'),
+    fs.promises.readFile(functionCatalogPath, 'utf8'),
+  ]);
+
+  cachedDecisionPrompts = {
+    systemPrompt,
+    functionCatalog,
+  };
+  return cachedDecisionPrompts;
+}
+
+async function decideEmailAction(decisionInput) {
+  const prompts = await loadDecisionPrompts();
+  const systemPrompt = `${prompts.systemPrompt}\n\n${prompts.functionCatalog}`;
+  const response = await requestAssistantJsonCompletion({
+    systemPrompt,
+    inputJson: decisionInput,
+    jsonSchema: decisionSchema,
+  });
+
+  return {
+    decision: extractStructuredJson(response),
+    rawResponse: response,
+  };
 }
 
 async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
@@ -188,10 +284,93 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
     const results = [];
 
     for (const message of limited) {
-      const parsed = await simpleParser(message.source);
-      const outputDir = await saveParsedMessage(config.importBaseDir, message, parsed);
+      let processed = false;
+      let decisionSummary = null;
 
+      const parsed = await simpleParser(message.source);
+      const storage = await saveParsedMessage(config.importBaseDir, message, parsed);
       const envelope = message.envelope || {};
+
+      try {
+        const decisionInput = {
+          subject: parsed.subject || envelope.subject || null,
+          from: formatAddressOnlyList(parsed.from?.value),
+          cc: formatAddressOnlyList(parsed.cc?.value),
+          date: message.internalDate ? new Date(message.internalDate).toISOString() : null,
+          body: parsed.text || parsed.html || '',
+          attachments: storage.attachments,
+        };
+
+        const { decision, rawResponse } = await decideEmailAction(decisionInput);
+        decisionSummary = decision;
+
+        if (storage.metadataPath) {
+          const updatedMetadata = {
+            subject: parsed.subject || null,
+            from: formatAddressOnlyList(parsed.from?.value),
+            cc: formatAddressOnlyList(parsed.cc?.value),
+            llm_decision: {
+              ...decision,
+              raw_response: rawResponse,
+              decided_at: new Date().toISOString(),
+            },
+          };
+          await fs.promises.writeFile(
+            storage.metadataPath,
+            `${JSON.stringify(updatedMetadata, null, 2)}\n`
+          );
+        }
+
+        if (decision.action === 'pre_approval') {
+          if (!storage.supportedAttachmentPaths.length) {
+            throw new Error('No supported PDF/image attachments for pre-approval');
+          }
+          const payload = await processPreApproval(storage.supportedAttachmentPaths);
+          let payloadPath = null;
+
+          if (storage.outputDir) {
+            payloadPath = path.join(storage.outputDir, 'pre-approval-request-payload.json');
+            await fs.promises.writeFile(payloadPath, `${JSON.stringify(payload, null, 2)}\n`);
+          }
+
+          const replyResult = await replyPreApproval({
+            subject: parsed.subject || envelope.subject || null,
+            to: formatAddressOnlyList(parsed.from?.value),
+            payloadPath,
+            inReplyTo: parsed.messageId || envelope.messageId || null,
+            references: parsed.messageId || envelope.messageId || null,
+          });
+
+          if (storage.outputDir) {
+            const replyPath = path.join(storage.outputDir, 'reply.json');
+            await fs.promises.writeFile(
+              replyPath,
+              `${JSON.stringify({ type: 'pre_approval', ...replyResult }, null, 2)}\n`
+            );
+          }
+        } else {
+          const replyResult = await replyNoAction({
+            subject: parsed.subject || envelope.subject || null,
+            to: formatAddressOnlyList(parsed.from?.value),
+            reason: decision.reason || null,
+            inReplyTo: parsed.messageId || envelope.messageId || null,
+            references: parsed.messageId || envelope.messageId || null,
+          });
+
+          if (storage.outputDir) {
+            const replyPath = path.join(storage.outputDir, 'reply.json');
+            await fs.promises.writeFile(
+              replyPath,
+              `${JSON.stringify({ type: 'no_action', ...replyResult }, null, 2)}\n`
+            );
+          }
+        }
+
+        processed = true;
+      } catch (error) {
+        debug('Email processing failed for uid %s: %s', message.uid, error.message);
+      }
+
       results.push({
         uid: message.uid,
         messageId: envelope.messageId || null,
@@ -201,10 +380,14 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
         to: formatAddressList(envelope.to),
         cc: formatAddressList(envelope.cc),
         bcc: formatAddressList(envelope.bcc),
-        storedPath: outputDir,
+        storedPath: storage.outputDir,
+        decision: decisionSummary,
+        processed,
       });
 
-      await client.messageFlagsAdd(message.uid, ['\\Seen'], { uid: true });
+      if (processed) {
+        await client.messageFlagsAdd(message.uid, ['\\Seen'], { uid: true });
+      }
     }
 
     return results;
