@@ -1,0 +1,99 @@
+{
+    "main_sheet": {
+        "insurer": "Ulink Assist Company Limited",
+        "policy_no": "CCPBM52992",
+        "last_first_name": "SEIN HTAY",
+        "diagnosis_code": "",
+        "diagnosis_description": "Acute pulpitis at 21",
+        "provider_name": "Pun Hlaing Hospital (Mandalay 73)",
+        "provider_code": "031095",
+        "incur_date_from": "04/09/2022",
+        "incur_date_to": "04/09/2022",
+        "presented_currency": "MMK",
+        "presented_amount": "221200.94",
+        "non_covered_amount": "0",
+        "non_covered_remark": "Nil – no vitamins/supplements detected.",
+        "final_payable_amount": "221200.94",
+        "benefit_type": "DT",
+        "benefit_head": "DENT",
+        "data_consistency_check_name_date_match": "Matched",
+        "claim_document_consistency_check": "Complete Set",
+        "prescription_test_validation_result": "Unjustified billed items found",
+        "validation_notes": "Items billed but not prescribed: Specialist Consultation Fees* (Dr. Aung Lwin Oo/ Oral and Maxillo Facial), OPD Facility Fee, Infection Control Charges for OPD(M73), Syringe 03cc Disposable with Needle\"TRM\"",
+        "dx_treatment_consistency_result": "",
+        "dx_treatment_notes": ""
+    },
+    "document_source_summary": {
+        "patient": "SEIN HTAY",
+        "log_file": "Provided",
+        "medical_record_file": "Provided",
+        "invoice_file": "Provided",
+        "missing_docs": "None",
+        "status": "Complete Set"
+    },
+    "invoice_items": [
+        {
+            "description": "Specialist Consultation Fees* (Dr. Aung Lwin Oo/ Oral and Maxillo Facial)",
+            "amount": "10000.00"
+        },
+        {
+            "description": "Specialist Procedure Fees (Dr. Si Thu/Dental)",
+            "amount": "150000.00"
+        },
+        {
+            "description": "Dental Technician Per Procedure (MDY) (Dr. Aung Lwin Oo/ Oral and Maxillo Facial)",
+            "amount": "50000.00"
+        },
+        {
+            "description": "OPD Facility Fee",
+            "amount": "6000.00"
+        },
+        {
+            "description": "Infection Control Charges for OPD(M73)",
+            "amount": "5000.00"
+        },
+        {
+            "description": "Syringe 03cc Disposable with Needle\"TRM\"",
+            "amount": "200.94"
+        }
+    ],
+    "medical_items": [
+        "Specialist Procedure Fees, Dental Technician Per Procedure (MDY)",
+        "RCT at 21",
+        "filling at 11"
+    ],
+    "validation_summary": [
+        {
+            "patient": "SEIN HTAY",
+            "item": "Specialist Consultation Fees* (Dr. Aung Lwin Oo/ Oral and Maxillo Facial)",
+            "prescribed_tested": "Not prescribed",
+            "validation_result": "Unjustified",
+            "dx_treatment_consistency": "Appropriate",
+            "notes": "Billed but not prescribed"
+        },
+        {
+            "patient": "SEIN HTAY",
+            "item": "OPD Facility Fee",
+            "prescribed_tested": "Not prescribed",
+            "validation_result": "Unjustified",
+            "dx_treatment_consistency": "Appropriate",
+            "notes": "Billed but not prescribed"
+        },
+        {
+            "patient": "SEIN HTAY",
+            "item": "Infection Control Charges for OPD(M73)",
+            "prescribed_tested": "Not prescribed",
+            "validation_result": "Unjustified",
+            "dx_treatment_consistency": "Appropriate",
+            "notes": "Billed but not prescribed"
+        },
+        {
+            "patient": "SEIN HTAY",
+            "item": "Syringe 03cc Disposable with Needle\"TRM\"",
+            "prescribed_tested": "Not prescribed",
+            "validation_result": "Unjustified",
+            "dx_treatment_consistency": "Appropriate",
+            "notes": "Billed but not prescribed"
+        }
+    ]
+}
