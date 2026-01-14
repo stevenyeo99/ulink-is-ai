@@ -1,0 +1,226 @@
+const fs = require('fs');
+const path = require('path');
+const { ImapFlow } = require('imapflow');
+const { simpleParser } = require('mailparser');
+const createDebug = require('debug');
+
+const debug = createDebug('app:service:email');
+
+function parseBoolean(value, defaultValue = false) {
+  if (value === undefined || value === null) {
+    return defaultValue;
+  }
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  const normalized = String(value).trim().toLowerCase();
+  if (['true', '1', 'yes', 'y'].includes(normalized)) {
+    return true;
+  }
+  if (['false', '0', 'no', 'n'].includes(normalized)) {
+    return false;
+  }
+  return defaultValue;
+}
+
+function parseInteger(value, fallback) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isNaN(parsed) ? fallback : parsed;
+}
+
+function getImapConfig() {
+  const host = process.env.IMAP_HOST;
+  const user = process.env.IMAP_USER;
+  const password = process.env.IMAP_PASSWORD;
+
+  if (!host || !user || !password) {
+    throw new Error('IMAP_HOST, IMAP_USER, and IMAP_PASSWORD must be configured');
+  }
+
+  return {
+    host,
+    port: parseInteger(process.env.IMAP_PORT, 993),
+    secure: parseBoolean(process.env.IMAP_TLS, true),
+    user,
+    password,
+    importBaseDir: process.env.IMAP_IMPORT_BASE_DIR || null,
+    importLimit: parseInteger(process.env.IMAP_IMPORT_LIMIT, undefined),
+  };
+}
+
+function formatAddressList(list) {
+  if (!Array.isArray(list)) {
+    return [];
+  }
+  return list
+    .map((address) => {
+      if (!address) {
+        return null;
+      }
+      if (address.name) {
+        return `${address.name} <${address.address}>`;
+      }
+      return address.address;
+    })
+    .filter(Boolean);
+}
+
+function formatAddressOnlyList(list) {
+  if (!Array.isArray(list)) {
+    return [];
+  }
+  return list
+    .map((address) => (address ? address.address : null))
+    .filter(Boolean);
+}
+
+function sanitizeFilename(value) {
+  return String(value || '')
+    .replace(/[^\w.-]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 120);
+}
+
+function formatDateParts(date) {
+  const value = date instanceof Date ? date : new Date();
+  if (Number.isNaN(value.getTime())) {
+    const fallback = new Date();
+    return {
+      year: String(fallback.getFullYear()),
+      month: String(fallback.getMonth() + 1).padStart(2, '0'),
+      day: String(fallback.getDate()).padStart(2, '0'),
+    };
+  }
+
+  return {
+    year: String(value.getFullYear()),
+    month: String(value.getMonth() + 1).padStart(2, '0'),
+    day: String(value.getDate()).padStart(2, '0'),
+  };
+}
+
+async function saveParsedMessage(importBaseDir, message, parsed) {
+  if (!importBaseDir) {
+    return null;
+  }
+
+  const { year, month, day } = formatDateParts(message.internalDate);
+  const rawMessageId = parsed.messageId || (message.envelope && message.envelope.messageId) || '';
+  const messageId = sanitizeFilename(rawMessageId);
+  const folderName = messageId || `email-${message.uid}`;
+  const outputDir = path.join(importBaseDir, year, month, day, folderName);
+
+  await fs.promises.mkdir(outputDir, { recursive: true });
+
+  const subjectLine = parsed.subject ? `# ${parsed.subject}\n\n` : '';
+  const content = parsed.text || parsed.html || '';
+  const contentPath = path.join(outputDir, 'content.md');
+  await fs.promises.writeFile(contentPath, `${subjectLine}${content}`);
+
+  const metadataPath = path.join(outputDir, 'metadata.json');
+  const metadata = {
+    subject: parsed.subject || null,
+    from: formatAddressOnlyList(parsed.from?.value),
+    cc: formatAddressOnlyList(parsed.cc?.value),
+  };
+  await fs.promises.writeFile(metadataPath, `${JSON.stringify(metadata, null, 2)}\n`);
+
+  if (Array.isArray(parsed.attachments)) {
+    for (const attachment of parsed.attachments) {
+      if (!attachment || !attachment.content) {
+        continue;
+      }
+      const safeName = sanitizeFilename(attachment.filename || attachment.checksum || 'attachment');
+      const attachmentPath = path.join(outputDir, safeName);
+      await fs.promises.writeFile(attachmentPath, attachment.content);
+    }
+  }
+
+  return outputDir;
+}
+
+async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
+  const config = getImapConfig();
+  const effectiveLimit =
+    Number.isInteger(limit) && limit > 0 ? limit : config.importLimit;
+
+  const client = new ImapFlow({
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    auth: {
+      user: config.user,
+      pass: config.password,
+    },
+  });
+
+  let connected = false;
+  let lock;
+
+  try {
+    await client.connect();
+    connected = true;
+
+    lock = await client.getMailboxLock(mailbox);
+    const unseenUids = await client.search({ seen: false });
+
+    if (!unseenUids.length) {
+      return [];
+    }
+
+    const fetched = [];
+    for await (const message of client.fetch(unseenUids, {
+      uid: true,
+      envelope: true,
+      internalDate: true,
+      source: true,
+    })) {
+      fetched.push(message);
+    }
+
+    fetched.sort((a, b) => {
+      const left = a.internalDate ? new Date(a.internalDate).getTime() : 0;
+      const right = b.internalDate ? new Date(b.internalDate).getTime() : 0;
+      return left - right;
+    });
+
+    const limited = effectiveLimit ? fetched.slice(0, effectiveLimit) : fetched;
+    const results = [];
+
+    for (const message of limited) {
+      const parsed = await simpleParser(message.source);
+      const outputDir = await saveParsedMessage(config.importBaseDir, message, parsed);
+
+      const envelope = message.envelope || {};
+      results.push({
+        uid: message.uid,
+        messageId: envelope.messageId || null,
+        subject: envelope.subject || null,
+        date: message.internalDate ? new Date(message.internalDate).toISOString() : null,
+        from: formatAddressList(envelope.from),
+        to: formatAddressList(envelope.to),
+        cc: formatAddressList(envelope.cc),
+        bcc: formatAddressList(envelope.bcc),
+        storedPath: outputDir,
+      });
+
+      await client.messageFlagsAdd(message.uid, ['\\Seen'], { uid: true });
+    }
+
+    return results;
+  } catch (error) {
+    debug('Failed to fetch unseen emails: %s', error.message);
+    throw error;
+  } finally {
+    if (lock) {
+      lock.release();
+    }
+    if (connected) {
+      await client.logout().catch(() => undefined);
+    }
+  }
+}
+
+module.exports = {
+  fetchUnseenEmails,
+};
