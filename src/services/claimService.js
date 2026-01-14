@@ -6,6 +6,7 @@ const {
   extractStructuredJson,
 } = require('./llmService');
 const { convertFilesToJpeg300ppi } = require('./imageService');
+const { postMemberInfoByPolicy, postClaimPreApproval } = require('./iasService');
 
 async function processPreApproval(paths) {
   if (!Array.isArray(paths) || paths.length === 0) {
@@ -64,6 +65,106 @@ async function processPreApproval(paths) {
   return extractStructuredJson(validateResponse);
 }
 
+function formatDateToMMddyyyy(value) {
+  if (!value) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    const year = String(value.getFullYear());
+    return `${month}${day}${year}`;
+  }
+
+  const parts = String(value).trim().split(/[\/-]/);
+  if (parts.length === 3) {
+    const [day, month, year] = parts;
+    if (day && month && year) {
+      return `${month.padStart(2, '0')}${day.padStart(2, '0')}${year}`;
+    }
+  }
+
+  const parsed = new Date(value);
+  if (!Number.isNaN(parsed.getTime())) {
+    const month = String(parsed.getMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getDate()).padStart(2, '0');
+    const year = String(parsed.getFullYear());
+    return `${month}${day}${year}`;
+  }
+
+  return null;
+}
+
+function buildIasPreApprovalPayload(mainSheet, memberInfoData) {
+  const memberRefNo = memberInfoData?.payload?.member?.MBR_REF_NO || null;
+  const memberPlan = memberInfoData?.payload?.memberPlans?.[0] || {};
+  const planCurrency = memberPlan?.plan?.SCMA_OID_CCY || '';
+  const normalizedCurrency = planCurrency.replace(/^CCY_/, '');
+
+  const receivedDate = formatDateToMMddyyyy(new Date());
+  const incurDateFrom = formatDateToMMddyyyy(mainSheet.incur_date_from);
+  const incurDateTo = formatDateToMMddyyyy(mainSheet.incur_date_to);
+
+  return {
+    MemberRefNo: memberRefNo,
+    isValidation: 'N',
+    Items: [
+      {
+        DiagnosisCode: mainSheet.diagnosis_code || null,
+        DiagnosisDescription: mainSheet.diagnosis_description || null,
+        InvoiceID: 'NIL',
+        ReceivedDate: receivedDate,
+        SymptomDate: null,
+        ClaimType: 'P',
+        TreatmentCountry: 'Myanmar',
+        BenefitType: mainSheet.benefit_type || null,
+        ProviderName: mainSheet.provider_name || null,
+        IncurDateFrom: incurDateFrom,
+        IncurDateTo: incurDateTo,
+        PresentedCurrency: normalizedCurrency || null,
+        PresentedAmt: mainSheet.final_payable_amount ?? null,
+        ExchangeRate: 1,
+        BenefitHead: mainSheet.benefit_head || null,
+        PaymentCurrency: normalizedCurrency || null,
+        PaymentExchangeRate: 1,
+        PaymentMethod: '',
+        PlanId: memberPlan?.plan?.PLAN_ID || '',
+        MeplOid: memberPlan?.MEPL_OID || null,
+        BankName: '',
+        BankAcctNo: '',
+        BankAcctName: '',
+        PayeeEmail: '',
+      },
+    ],
+  };
+}
+
+async function submitClaimPreApprovalFromPaths(paths) {
+  const preApprovalResult = await processPreApproval(paths);
+  const mainSheet = preApprovalResult?.main_sheet || {};
+  const memberNrc = mainSheet.policy_no;
+  const meplEffDate = mainSheet.incur_date_from;
+
+  if (!memberNrc || !meplEffDate) {
+    const error = new Error('main_sheet.policy_no and main_sheet.incur_date_from are required');
+    error.status = 400;
+    throw error;
+  }
+
+  const memberInfoData = await postMemberInfoByPolicy({ memberNrc, meplEffDate });
+  const preApprovalPayload = buildIasPreApprovalPayload(mainSheet, memberInfoData);
+  const iasResponse = await postClaimPreApproval(preApprovalPayload);
+
+  return {
+    preApprovalResult,
+    preApprovalPayload,
+    iasResponse,
+  };
+}
+
 module.exports = {
   processPreApproval,
+  buildIasPreApprovalPayload,
+  submitClaimPreApprovalFromPaths,
 };

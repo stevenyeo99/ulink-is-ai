@@ -109,8 +109,46 @@ function isLikelyGarbled(text) {
   return printableRatio < 0.9;
 }
 
-function buildFallbackReply({ type, subject }) {
+function formatIasResponseBlock(iasResponse) {
+  if (!iasResponse) {
+    return 'IAS pre-approval response: (no response data available).';
+  }
+  if (typeof iasResponse === 'string') {
+    return `IAS pre-approval response: ${iasResponse}`;
+  }
+  const claimNo = iasResponse?.payload?.claimNo;
+  if (iasResponse?.success === true && claimNo) {
+    return [
+      `Pre-Approval Claim No ${claimNo} is successfully created on IAS.`,
+      'You may review this claim on IAS.',
+    ].join(' ');
+  }
+  return ['IAS pre-approval response:', JSON.stringify(iasResponse, null, 2)].join('\n');
+}
+
+function buildPreApprovalTemplate(claimNo) {
+  return [
+    'Thank you for submitting the pre-approval request.',
+    '',
+    `Pre-Approval Claim No ${claimNo} is successfully created on IAS. You may review this claim record on IAS.`,
+    '',
+    'Also attached the request payload that being used by AI to trigger into IAS Pre-approval claim API',
+    '',
+    'Best Regards,',
+    'ULINK AI Assistant',
+  ].join('\n');
+}
+
+function buildFallbackReply({ type, subject, iasResponse }) {
   if (type === 'pre_approval') {
+    const claimNo = iasResponse?.payload?.claimNo;
+    if (iasResponse?.success === true && claimNo) {
+      return {
+        subject: subject || 'Pre-approval request',
+        body: buildPreApprovalTemplate(claimNo),
+      };
+    }
+    const responseBlock = formatIasResponseBlock(iasResponse);
     return {
       subject: subject || 'Pre-approval request',
       body: [
@@ -118,8 +156,10 @@ function buildFallbackReply({ type, subject }) {
         '',
         'Thanks for your request. The attached JSON is the request payload that will be used to call the IAS claim pre-approval API.',
         '',
+        responseBlock,
+        '',
         'Best Regards,',
-        'ULINK Assistant',
+        'ULINK AI Assistant',
       ].join('\n'),
     };
   }
@@ -131,7 +171,7 @@ function buildFallbackReply({ type, subject }) {
       'Thanks for your request. Our AI assistant did not take action for this message yet.',
       '',
       'Best Regards,',
-      'ULINK Assistant',
+      'ULINK AI Assistant',
     ].join('\n'),
   };
 }
@@ -188,17 +228,40 @@ async function replyNoAction({ subject, to, reason, inReplyTo, references }) {
   };
 }
 
-async function replyPreApproval({ subject, to, payloadPath, inReplyTo, references }) {
+function appendIasResponseIfMissing(body, iasResponse) {
+  if (!iasResponse) {
+    return body;
+  }
+  const marker = 'IAS pre-approval response';
+  if (body.toLowerCase().includes(marker.toLowerCase())) {
+    return body;
+  }
+  const responseBlock = formatIasResponseBlock(iasResponse);
+  const lines = body.trim().split('\n');
+  const signatureIndex = lines.findIndex((line) => line.trim() === 'Best Regards,');
+  if (signatureIndex !== -1) {
+    const beforeSignature = lines.slice(0, signatureIndex).join('\n');
+    const signature = lines.slice(signatureIndex).join('\n');
+    return [beforeSignature.trim(), '', responseBlock, '', signature].join('\n');
+  }
+  return [body.trim(), '', responseBlock].join('\n');
+}
+
+async function replyPreApproval({ subject, to, payloadPath, iasResponse, inReplyTo, references }) {
   debug('Pre-approval reply queued for %s (subject: %s, payload: %s)', to, subject, payloadPath);
+  const claimNo = iasResponse?.payload?.claimNo;
   const { body, rawResponse } = await buildReplyFromLlm({
     type: 'pre_approval',
     subject,
     payloadPath,
+    iasResponse,
   });
 
   const finalReply = isLikelyGarbled(body)
-    ? buildFallbackReply({ type: 'pre_approval', subject })
-    : { subject, body };
+    ? buildFallbackReply({ type: 'pre_approval', subject, iasResponse })
+    : { subject, body: appendIasResponseIfMissing(body, iasResponse) };
+  const finalBody =
+    iasResponse?.success === true && claimNo ? buildPreApprovalTemplate(claimNo) : finalReply.body;
 
   const attachments = payloadPath
     ? [
@@ -213,7 +276,7 @@ async function replyPreApproval({ subject, to, payloadPath, inReplyTo, reference
   const result = await sendEmail({
     to,
     subject: subject || 'Pre-approval payload prepared',
-    body: finalReply.body,
+    body: finalBody,
     attachments,
     inReplyTo,
     references,
@@ -223,8 +286,9 @@ async function replyPreApproval({ subject, to, payloadPath, inReplyTo, reference
     status: 'sent',
     subject: subject || null,
     to,
-    body: finalReply.body,
+    body: finalBody,
     payloadPath,
+    iasResponse,
     llm_raw_response: rawResponse,
     messageId: result.messageId || null,
     fallbackUsed: finalReply.body !== body,

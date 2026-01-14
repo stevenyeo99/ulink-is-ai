@@ -7,7 +7,7 @@ const {
   requestAssistantJsonCompletion,
   extractStructuredJson,
 } = require('./llmService');
-const { processPreApproval } = require('./claimService');
+const { submitClaimPreApprovalFromPaths } = require('./claimService');
 const { replyNoAction, replyPreApproval } = require('./emailReplyService');
 
 const debug = createDebug('app:service:email');
@@ -325,18 +325,28 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
           if (!storage.supportedAttachmentPaths.length) {
             throw new Error('No supported PDF/image attachments for pre-approval');
           }
-          const payload = await processPreApproval(storage.supportedAttachmentPaths);
+          const { preApprovalResult, preApprovalPayload, iasResponse } =
+            await submitClaimPreApprovalFromPaths(storage.supportedAttachmentPaths);
           let payloadPath = null;
 
           if (storage.outputDir) {
+            const ocrPath = path.join(storage.outputDir, 'pre-approval-ocr.json');
+            await fs.promises.writeFile(
+              ocrPath,
+              `${JSON.stringify(preApprovalResult, null, 2)}\n`
+            );
             payloadPath = path.join(storage.outputDir, 'pre-approval-request-payload.json');
-            await fs.promises.writeFile(payloadPath, `${JSON.stringify(payload, null, 2)}\n`);
+            await fs.promises.writeFile(
+              payloadPath,
+              `${JSON.stringify(preApprovalPayload, null, 2)}\n`
+            );
           }
 
           const replyResult = await replyPreApproval({
             subject: parsed.subject || envelope.subject || null,
             to: formatAddressOnlyList(parsed.from?.value),
             payloadPath,
+            iasResponse,
             inReplyTo: parsed.messageId || envelope.messageId || null,
             references: parsed.messageId || envelope.messageId || null,
           });
