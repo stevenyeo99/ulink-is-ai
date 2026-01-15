@@ -42,6 +42,8 @@
   ]
 }
 ```
+- **POST** `/provider_claim/json/excel`
+- **Description**: Accepts a provider claim JSON payload and saves an Excel workbook (Main Sheet, Document Source Summary, Validation Summary tabs). Column headers replace underscores with spaces. Returns the saved file path.
 
 ## Conventions
 - Content type: `application/json` for requests/responses unless noted.

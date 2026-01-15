@@ -5,6 +5,8 @@ const router = express.Router();
 
 // get json format like ULINK GPT Excel
 router.post('/provider_claim/json', claimController.providerClaimJson);
+// get excel format from provider claim json
+router.post('/provider_claim/json/excel', claimController.providerClaimJsonExcel);
 // Get Member Info API
 router.post('/ias/get_member_info_by_policy', claimController.getMemberInfoByPolicy);
 // Build IAS Provider Claim Payload API

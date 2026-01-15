@@ -8,6 +8,7 @@ const {
   extractStructuredJson,
 } = require('./llmService');
 const { submitProviderClaimFromPaths } = require('./claimService');
+const { saveProviderClaimWorkbook } = require('./excelService');
 const { replyNoAction, replyProviderClaim } = require('./emailReplyService');
 
 const debug = createDebug('app:service:email');
@@ -328,9 +329,11 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
           const { providerClaimResult, providerClaimPayload, iasResponse } =
             await submitProviderClaimFromPaths(storage.supportedAttachmentPaths);
           let payloadPath = null;
+          let ocrPath = null;
+          let excelPath = null;
 
           if (storage.outputDir) {
-            const ocrPath = path.join(storage.outputDir, 'provider-claim-ocr.json');
+            ocrPath = path.join(storage.outputDir, 'provider-claim-ocr.json');
             await fs.promises.writeFile(
               ocrPath,
               `${JSON.stringify(providerClaimResult, null, 2)}\n`
@@ -340,12 +343,18 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
               payloadPath,
               `${JSON.stringify(providerClaimPayload, null, 2)}\n`
             );
+            excelPath = await saveProviderClaimWorkbook(providerClaimResult, {
+              dir: storage.outputDir,
+              filename: 'llm_prompt_document_result.xlsx',
+            });
           }
 
           const replyResult = await replyProviderClaim({
             subject: parsed.subject || envelope.subject || null,
             to: formatAddressOnlyList(parsed.from?.value),
             payloadPath,
+            ocrPath,
+            excelPath,
             iasResponse,
             inReplyTo: parsed.messageId || envelope.messageId || null,
             references: parsed.messageId || envelope.messageId || null,

@@ -65,6 +65,94 @@ function extractLlmText(response) {
   return '';
 }
 
+function buildProviderClaimSummary(ocrData) {
+  if (!ocrData || typeof ocrData !== 'object') {
+    return null;
+  }
+  const main = ocrData.main_sheet || {};
+  const docs = ocrData.document_source_summary || {};
+
+  const dateFrom = main.incur_date_from || '';
+  const dateTo = main.incur_date_to || '';
+  const date =
+    dateFrom && dateTo && dateFrom !== dateTo ? `${dateFrom} to ${dateTo}` : dateFrom || dateTo;
+
+  const providerCode = main.provider_code || '';
+  const providerName = main.provider_name || '';
+  const provider =
+    providerCode && providerName
+      ? `${providerCode} - ${providerName}`
+      : providerName || providerCode;
+
+  const benefitParts = [main.benefit_type, main.benefit_head].filter(Boolean);
+  const currency = main.presented_currency || '';
+  const amount = main.presented_amount || '';
+  const presentedAmount =
+    currency && amount ? `${amount} ${currency}` : amount || currency;
+  const docSummaryParts = [
+    `LOG: ${docs.log_file ? 'Provided' : 'Not provided'}`,
+    `Medical Record: ${docs.medical_record_file ? 'Provided' : 'Not provided'}`,
+    `Invoice: ${docs.invoice_file ? 'Provided' : 'Not provided'}`,
+    `Missing: ${docs.missing_docs || 'Not available'}`,
+    `Overall: ${docs.status || 'Not available'}`,
+  ].filter(Boolean);
+
+  return {
+    name: main.last_first_name || docs.patient || '',
+    date,
+    provider,
+    presentedAmount,
+    benefitClassification: benefitParts.join(' / '),
+    documentSummary: docSummaryParts.join('\n'),
+  };
+}
+
+async function loadProviderClaimSummary(ocrPath) {
+  if (!ocrPath) {
+    return null;
+  }
+  try {
+    const raw = await fs.promises.readFile(ocrPath, 'utf8');
+    const parsed = JSON.parse(raw);
+    return buildProviderClaimSummary(parsed);
+  } catch (error) {
+    debug('Failed to read provider claim OCR JSON (%s): %s', ocrPath, error.message);
+    return null;
+  }
+}
+
+function formatKeyDetails(ocrSummary) {
+  if (!ocrSummary || typeof ocrSummary !== 'object') {
+    return '';
+  }
+
+  const normalize = (value) => {
+    const text = String(value || '').trim();
+    return text ? text : 'Not available';
+  };
+
+  const documentSummary = normalize(ocrSummary.documentSummary);
+  const formattedSummary = documentSummary
+    ? [
+        'Document Summary check:',
+        documentSummary
+          .split('\n')
+          .map((line) => `  ${line}`)
+          .join('\n'),
+      ].join('\n')
+    : 'Document Summary check: Not available';
+
+  return [
+    'Key Details:',
+    `Name: ${normalize(ocrSummary.name)}`,
+    `Date: ${normalize(ocrSummary.date)}`,
+    `Provider Code & Name: ${normalize(ocrSummary.provider)}`,
+    `Presented Amount: ${normalize(ocrSummary.presentedAmount)}`,
+    `Benefit Classification: ${normalize(ocrSummary.benefitClassification)}`,
+    formattedSummary,
+  ].join('\n');
+}
+
 async function buildReplyFromLlm(context) {
   const prompt = await loadReplyPrompt();
   const response = await requestAssistantJsonCompletion({
@@ -126,26 +214,30 @@ function formatIasResponseBlock(iasResponse) {
   return ['IAS provider claim response:', JSON.stringify(iasResponse, null, 2)].join('\n');
 }
 
-function buildProviderClaimTemplate(claimNo) {
+function buildProviderClaimTemplate(claimNo, ocrSummary) {
+  const keyDetails = formatKeyDetails(ocrSummary);
   return [
     'Thank you for submitting the provider claim request.',
     '',
     `Provider Claim No ${claimNo} is successfully created on IAS. You may review this claim record on IAS.`,
     '',
-    'Also attached the request payload that being used by AI to trigger into IAS provider claim API',
+    ...(keyDetails ? [keyDetails, ''] : []),
+    'Also attached the request payload that being used by AI to trigger into IAS provider claim API = provider-claim-request-payload.json',
+    'For more details on each prompt result was generated, please refer to the attached Excel file = llm_prompt_document_result.xlsx',
     '',
     'Best Regards,',
     'ULINK AI Assistant',
   ].join('\n');
 }
 
-function buildFallbackReply({ type, subject, iasResponse }) {
+function buildFallbackReply({ type, subject, iasResponse, ocrSummary }) {
   if (type === 'provider_claim') {
+    const keyDetails = formatKeyDetails(ocrSummary);
     const claimNo = iasResponse?.payload?.claimNo;
     if (iasResponse?.success === true && claimNo) {
       return {
         subject: subject || 'Provider claim request',
-        body: buildProviderClaimTemplate(claimNo),
+        body: buildProviderClaimTemplate(claimNo, ocrSummary),
       };
     }
     const responseBlock = formatIasResponseBlock(iasResponse);
@@ -154,8 +246,10 @@ function buildFallbackReply({ type, subject, iasResponse }) {
       body: [
         'Hello,',
         '',
-        'Thanks for your request. The attached JSON is the request payload that will be used to call the IAS provider claim API.',
+        'Thanks for your request. The attached JSON is the request payload that will be used to call the IAS provider claim API = provider-claim-request-payload.json.',
+        'For more details on each prompt result was generated, please refer to the attached Excel file = llm_prompt_document_result.xlsx.',
         '',
+        ...(keyDetails ? [keyDetails, ''] : []),
         responseBlock,
         '',
         'Best Regards,',
@@ -247,31 +341,50 @@ function appendIasResponseIfMissing(body, iasResponse) {
   return [body.trim(), '', responseBlock].join('\n');
 }
 
-async function replyProviderClaim({ subject, to, payloadPath, iasResponse, inReplyTo, references }) {
+async function replyProviderClaim({
+  subject,
+  to,
+  payloadPath,
+  ocrPath,
+  excelPath,
+  iasResponse,
+  inReplyTo,
+  references,
+}) {
   debug('Provider claim reply queued for %s (subject: %s, payload: %s)', to, subject, payloadPath);
   const claimNo = iasResponse?.payload?.claimNo;
+  const ocrSummary = await loadProviderClaimSummary(ocrPath);
   const { body, rawResponse } = await buildReplyFromLlm({
     type: 'provider_claim',
     subject,
     payloadPath,
+    ocr_summary: ocrSummary,
     iasResponse,
   });
 
   const finalReply = isLikelyGarbled(body)
-    ? buildFallbackReply({ type: 'provider_claim', subject, iasResponse })
+    ? buildFallbackReply({ type: 'provider_claim', subject, iasResponse, ocrSummary })
     : { subject, body: appendIasResponseIfMissing(body, iasResponse) };
   const finalBody =
-    iasResponse?.success === true && claimNo ? buildProviderClaimTemplate(claimNo) : finalReply.body;
+    iasResponse?.success === true && claimNo
+      ? buildProviderClaimTemplate(claimNo, ocrSummary)
+      : finalReply.body;
 
-  const attachments = payloadPath
-    ? [
-        {
-          filename: path.basename(payloadPath),
-          path: payloadPath,
-          contentType: 'application/json',
-        },
-      ]
-    : [];
+  const attachments = [];
+  if (payloadPath) {
+    attachments.push({
+      filename: path.basename(payloadPath),
+      path: payloadPath,
+      contentType: 'application/json',
+    });
+  }
+  if (excelPath) {
+    attachments.push({
+      filename: path.basename(excelPath),
+      path: excelPath,
+      contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+  }
 
   const result = await sendEmail({
     to,

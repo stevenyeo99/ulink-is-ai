@@ -3,8 +3,11 @@ const {
   buildIasProviderClaimPayload,
   submitProviderClaimFromPaths,
 } = require('../services/claimService');
+const { saveProviderClaimWorkbook } = require('../services/excelService');
 const { postMemberInfoByPolicy, postProviderClaim } = require('../services/iasService');
 const createDebug = require('debug');
+const os = require('os');
+const path = require('path');
 
 const debug = createDebug('app:controller:claim');
 
@@ -24,6 +27,28 @@ async function providerClaimJson(req, res) {
     debug('Conversion error: %s', error.message);
     return res.status(500).json({
       error: 'Failed to process OCR with LLM',
+      detail: error.message,
+    });
+  }
+}
+
+async function providerClaimJsonExcel(req, res) {
+  const payload = req.body || {};
+
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return res.status(400).json({
+      error: 'payload must be a JSON object',
+    });
+  }
+
+  try {
+    const outputDir = path.join(os.tmpdir(), 'claim-provider-claim', 'excel');
+    const filePath = await saveProviderClaimWorkbook(payload, { dir: outputDir });
+    return res.status(200).json({ path: filePath });
+  } catch (error) {
+    debug('Provider claim Excel error: %s', error.message);
+    return res.status(500).json({
+      error: 'Failed to build provider claim Excel',
       detail: error.message,
     });
   }
@@ -128,6 +153,7 @@ async function submitClaimProviderClaim(req, res) {
 
 module.exports = {
   providerClaimJson,
+  providerClaimJsonExcel,
   getMemberInfoByPolicy,
   prepareIasProviderClaimPayload,
   claimProviderClaim,
