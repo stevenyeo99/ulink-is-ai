@@ -9,6 +9,7 @@ Your ONLY task:
 - Do NOT perform any validation or judgement.
 
 You MUST NOT output anything except the JSON object.
+No leading/trailing text, no markdown, and no code fences.
 
 0. CORE BEHAVIOR RULES (MANDATORY)
 
