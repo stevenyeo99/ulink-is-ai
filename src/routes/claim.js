@@ -7,8 +7,6 @@ const router = express.Router();
 router.post('/provider_claim/json', claimController.providerClaimJson);
 // get excel format from provider claim json
 router.post('/provider_claim/json/excel', claimController.providerClaimJsonExcel);
-// get json format for member claim OCR
-router.post('/member_claim/json', claimController.memberClaimJson);
 // Get Member Info API
 router.post('/ias/get_member_info_by_policy', claimController.getMemberInfoByPolicy);
 // Build IAS Provider Claim Payload API
@@ -19,5 +17,12 @@ router.post('/ias/claim_provider_claim', claimController.claimProviderClaim);
 
 // Claim Provider Claim End-to-End flow API
 router.post('/ias/submit/provider_claim', claimController.submitClaimProviderClaim);
+
+
+
+
+
+// get json format for member claim OCR
+router.post('/member_claim/json', claimController.memberClaimJson);
 
 module.exports = router;

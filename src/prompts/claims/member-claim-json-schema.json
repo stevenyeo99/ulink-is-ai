@@ -1,42 +1,41 @@
 {
   "type": "object",
+  "additionalProperties": true,
   "properties": {
-    "claimant_info": {
-      "type": "object",
-      "properties": {
-        "name": { "type": "string" },
-        "nrc": { "type": "string" },
-        "date_of_birth": { "type": "string" },
-        "gender": { "type": "string" },
-        "phone": { "type": "string" },
-        "email": { "type": "string" },
-        "address": { "type": "string" }
-      }
-    },
     "policy_info": {
       "type": "object",
       "properties": {
+        "issue_no": { "type": "string" },
         "policy_no": { "type": "string" },
         "member_no": { "type": "string" },
-        "plan": { "type": "string" },
-        "effective_date": { "type": "string" }
-      }
+        "product_name": { "type": "string" },
+        "member_name": { "type": "string" },
+        "member_nrc": { "type": "string" },
+        "member_phone_number": { "type": "string" },
+        "member_email": { "type": "string" },
+        "channel": { "type": "string" }
+      },
+      "required": ["policy_no"]
     },
     "claim_info": {
       "type": "object",
       "properties": {
-        "claim_type": { "type": "string" },
-        "incident_date": { "type": "string" },
+        "incur_date": { "type": "string", "description":"Refer to Appointment/Visit or Treatment Date on the claim form."},
+        "received_date": { "type": "string", "description":"Refer to the reported date"},
+        "claim_type": { "type": "string", "description": "claim benefit type" },
+        "benefit_type": { "type": "string", "description": "type of patient" },
+        "accident_date": { "type": "string" },
+        "accident_time": { "type": "string" },
         "report_date": { "type": "string" },
-        "diagnosis": { "type": "string" },
-        "treatment": { "type": "string" },
-        "provider_name": { "type": "string" },
-        "provider_address": { "type": "string" },
+        "diagnosis": { "type": "string", "description": "full description of treatment" },
+        "diagnosis_remark": { "type": "string", "description": "detail of illness injury" },
+        "provider_name": { "type": "string", "description": "hospital or clinic name" },
+        "doctor_name": { "type": "string" },
         "country": { "type": "string" },
-        "currency": { "type": "string" },
-        "claimed_amount": { "type": "string" },
-        "description": { "type": "string" }
-      }
+        "total_claim_amount": { "type": "string" },
+        "description_of_treatment": { "type": "string" }
+      },
+      "required": ["incur_date", "received_date", "incident_date", "claim_type", "benefit_type", "diagnosis", "diagnosis_remark", "total_claim_amount"]
     },
     "bank_info": {
       "type": "object",
@@ -44,11 +43,13 @@
         "bank_name": { "type": "string" },
         "account_name": { "type": "string" },
         "account_no": { "type": "string" },
-        "branch": { "type": "string" }
-      }
+        "bank_address": { "type": "string" }
+      },
+      "required": ["bank_name", "account_name", "account_no", "bank_address"]
     },
     "document_info": {
       "type": "object",
+      "additionalProperties": true,
       "properties": {
         "submitted_documents": {
           "type": "array",
@@ -60,21 +61,38 @@
     },
     "form_info": {
       "type": "object",
+      "additionalProperties": true,
       "properties": {
         "form_type": { "type": "string" },
         "form_date": { "type": "string" },
         "received_date": { "type": "string" }
       }
     },
+    "items": {
+      "type": "array",
+      "description": "Line items or billed items listed on the claim form.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "benefit": {
+            "type": "string",
+            "description": "Extract ONLY the printed service or fee label (benefit). Ignore any doctor/provider names even if they appear on the same line. The output MUST NOT contain personal names, titles, or honorifics. Examples: 'OPD Consultant Fees', 'OPD Service Fees'. Non-examples: 'Prof. Myat Sandar Kyaw', 'Dr. Aung'. If unsure, return an empty string."
+          },
+          "amount": { "type": "string" }
+        }
+      }
+    },
     "extra_fields": {
       "type": "array",
       "items": {
         "type": "object",
+        "additionalProperties": true,
         "properties": {
           "label": { "type": "string" },
           "value": { "type": "string" }
         }
       }
     }
-  }
+  },
+  "required": ["policy_info", "claim_info", "bank_info", "items", "document_info", "form_info", "extra_fields"]
 }

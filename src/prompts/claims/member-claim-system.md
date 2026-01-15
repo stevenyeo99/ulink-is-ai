@@ -16,3 +16,13 @@ Extraction rules:
 - Do NOT invent values.
 - Normalize names to uppercase where appropriate.
 - Keep dates as printed in the document.
+
+Prioritize these fields when present:
+- policy_info.policy_no
+- claim_info.incident_date (incur date)
+- claim_info.benefit_type (if available on the form)
+- claim_info.diagnosis
+- claim_info.claimed_amount and claim_info.currency
+- bank_info.bank_name, bank_info.bank_address, bank_info.account_name, bank_info.account_no
+- claim_info.doctor_name
+- items[] list (description + amount + date)
