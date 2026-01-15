@@ -1,7 +1,7 @@
 Available actions:
 
-1) pre_approval
-Use this only when the email is clearly asking for a medical claim pre-approval
+1) provider_claim
+Use this only when the email is clearly asking for a medical provider claim
 and includes PDF or image attachments that contain claim-related documents.
 
 2) no_action

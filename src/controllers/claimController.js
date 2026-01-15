@@ -1,24 +1,24 @@
 const {
-  processPreApproval,
-  buildIasPreApprovalPayload,
-  submitClaimPreApprovalFromPaths,
+  processProviderClaim,
+  buildIasProviderClaimPayload,
+  submitProviderClaimFromPaths,
 } = require('../services/claimService');
-const { postMemberInfoByPolicy, postClaimPreApproval } = require('../services/iasService');
+const { postMemberInfoByPolicy, postProviderClaim } = require('../services/iasService');
 const createDebug = require('debug');
 
 const debug = createDebug('app:controller:claim');
 
-async function preApprovalJson(req, res) {
+async function providerClaimJson(req, res) {
   const { paths } = req.body || {};
 
   if (!Array.isArray(paths) || paths.length === 0) {
     return res.status(400).json({ error: 'paths must be a non-empty array of file paths' });
   }
 
-  debug('Received pre-approval OCR request for %d paths', paths.length);
+  debug('Received provider-claim OCR request for %d paths', paths.length);
 
   try {
-    const validated = await processPreApproval(paths);
+    const validated = await processProviderClaim(paths);
     return res.status(200).json(validated);
   } catch (error) {
     debug('Conversion error: %s', error.message);
@@ -28,14 +28,6 @@ async function preApprovalJson(req, res) {
     });
   }
 }
-
-module.exports = {
-  preApprovalJson,
-  getMemberInfoByPolicy,
-  prepareIasPreApprovalPayload,
-  claimPreApproval,
-  submitClaimPreApproval,
-};
 
 async function getMemberInfoByPolicy(req, res) {
   const { memberNrc, meplEffDate } = req.body || {};
@@ -58,7 +50,7 @@ async function getMemberInfoByPolicy(req, res) {
   }
 }
 
-async function prepareIasPreApprovalPayload(req, res) {
+async function prepareIasProviderClaimPayload(req, res) {
   const payload = req.body || {};
   const mainSheet = payload.main_sheet || {};
   const memberNrc = mainSheet.policy_no;
@@ -73,10 +65,10 @@ async function prepareIasPreApprovalPayload(req, res) {
   try {
     // Member Info Data from IAS
     const memberInfoData = await postMemberInfoByPolicy({ memberNrc, meplEffDate });
-    const preApprovalPayload = buildIasPreApprovalPayload(mainSheet, memberInfoData);
+    const providerClaimPayload = buildIasProviderClaimPayload(mainSheet, memberInfoData);
 
     return res.status(200).json({
-      ...preApprovalPayload,
+      ...providerClaimPayload,
     });
   } catch (error) {
     debug('IAS prepare payload error: %s', error.message);
@@ -87,7 +79,7 @@ async function prepareIasPreApprovalPayload(req, res) {
   }
 }
 
-async function claimPreApproval(req, res) {
+async function claimProviderClaim(req, res) {
   const payload = req.body || {};
 
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
@@ -97,18 +89,18 @@ async function claimPreApproval(req, res) {
   }
 
   try {
-    const data = await postClaimPreApproval(payload);
+    const data = await postProviderClaim(payload);
     return res.status(200).json(data);
   } catch (error) {
-    debug('IAS claim pre-approval error: %s', error.message);
+    debug('IAS provider claim error: %s', error.message);
     return res.status(502).json({
-      error: 'Failed to call IAS claim pre-approval API',
+      error: 'Failed to call IAS provider claim API',
       detail: error.detail || error.message,
     });
   }
 }
 
-async function submitClaimPreApproval(req, res) {
+async function submitClaimProviderClaim(req, res) {
   const { paths } = req.body || {};
 
   if (!Array.isArray(paths) || paths.length === 0) {
@@ -116,20 +108,28 @@ async function submitClaimPreApproval(req, res) {
   }
 
   try {
-    const { iasResponse } = await submitClaimPreApprovalFromPaths(paths);
+    const { iasResponse } = await submitProviderClaimFromPaths(paths);
     return res.status(200).json({
       ...iasResponse,
     });
   } catch (error) {
-    debug('IAS submit claim pre-approval error: %s', error.message);
+    debug('IAS submit provider claim error: %s', error.message);
     if (error.status === 400) {
       return res.status(400).json({
         error: error.message,
       });
     }
     return res.status(502).json({
-      error: 'Failed to submit IAS claim pre-approval',
+      error: 'Failed to submit IAS provider claim',
       detail: error.detail || error.message,
     });
   }
 }
+
+module.exports = {
+  providerClaimJson,
+  getMemberInfoByPolicy,
+  prepareIasProviderClaimPayload,
+  claimProviderClaim,
+  submitClaimProviderClaim,
+};

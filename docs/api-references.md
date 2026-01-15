@@ -12,8 +12,8 @@
 ```
 
 ## Claims
-- **POST** `/claim/pre_approval/json`
-- **Description**: Accepts a list of file paths for pre-approval OCR via LM Studio. Images are re-encoded to 300 PPI JPEGs; PDFs are rendered with `pdftoppm` at 300 PPI into per-page JPEGs (quality 90) before OCR.
+- **POST** `/claim/provider_claim/json`
+- **Description**: Accepts a list of file paths for provider claim OCR via LM Studio. Images are re-encoded to 300 PPI JPEGs; PDFs are rendered with `pdftoppm` at 300 PPI into per-page JPEGs (quality 90) before OCR.
 - **Request Body**:
 ```json
 {
@@ -27,14 +27,14 @@
   "conversions": [
     {
       "inputPath": "/path/to/image1.png",
-      "outputPath": "/tmp/claim-preapproval/image1-<timestamp>-<rand>.jpg",
+      "outputPath": "/tmp/claim-provider-claim/image1-<timestamp>-<rand>.jpg",
       "pageNumber": null,
       "status": "success",
       "error": null
     },
     {
       "inputPath": "/path/to/document.pdf",
-      "outputPath": "/tmp/claim-preapproval/document-<timestamp>-<rand>-1.jpg",
+      "outputPath": "/tmp/claim-provider-claim/document-<timestamp>-<rand>-1.jpg",
       "pageNumber": 1,
       "status": "success",
       "error": null

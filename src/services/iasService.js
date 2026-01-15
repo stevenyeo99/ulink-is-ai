@@ -58,15 +58,16 @@ async function postMemberInfoByPolicy({ memberNrc, meplEffDate }) {
 
 module.exports = {
   postMemberInfoByPolicy,
-  postClaimPreApproval,
+  postProviderClaim,
 };
 
-async function postClaimPreApproval(payload) {
+async function postProviderClaim(payload) {
   if (!payload || typeof payload !== 'object') {
     throw new Error('payload is required');
   }
 
-  const url = buildIasUrl(process.env.CL_PRE_APP_CLAIM_API);
+  const url = buildIasUrl(process.env.CL_CLAIM_API);
+  console.log('IAS Provider Claim URL:', url);
   const response = await fetch(url, {
     method: 'POST',
     headers: {
@@ -75,6 +76,7 @@ async function postClaimPreApproval(payload) {
     },
     body: JSON.stringify(payload),
   });
+  console.log('IAS Provider Claim Payload:', JSON.stringify(payload));
 
   const text = await response.text();
   let data = null;
@@ -86,11 +88,12 @@ async function postClaimPreApproval(payload) {
       data = { raw: text };
     }
   }
+  console.log('IAS Provider Claim Response:', data);
 
   if (!response.ok) {
     const detail = data || { raw: text };
-    debug('IAS pre-approval request failed (%s): %o', response.status, detail);
-    const err = new Error(`IAS pre-approval request failed with status ${response.status}`);
+    debug('IAS provider claim request failed (%s): %o', response.status, detail);
+    const err = new Error(`IAS provider claim request failed with status ${response.status}`);
     err.status = response.status;
     err.detail = detail;
     throw err;

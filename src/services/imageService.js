@@ -10,7 +10,7 @@ const debug = createDebug('app:service:image');
 const execFileAsync = promisify(execFile);
 
 async function convertFilesToJpeg300ppi(paths) {
-  const tempDir = path.join(os.tmpdir(), 'claim-preapproval');
+  const tempDir = path.join(os.tmpdir(), 'claim-provider-claim');
   await fs.promises.mkdir(tempDir, { recursive: true });
 
   const results = [];

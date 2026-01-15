@@ -6,27 +6,33 @@ const {
   extractStructuredJson,
 } = require('./llmService');
 const { convertFilesToJpeg300ppi } = require('./imageService');
-const { postMemberInfoByPolicy, postClaimPreApproval } = require('./iasService');
+const { postMemberInfoByPolicy, postProviderClaim } = require('./iasService');
 
-async function processPreApproval(paths) {
+async function processProviderClaim(paths) {
   if (!Array.isArray(paths) || paths.length === 0) {
     throw new Error('paths must be a non-empty array of file paths');
   }
 
-  const systemPromptPath = path.join(__dirname, '..', 'prompts', 'claims', 'claim-preapproval-system.md');
+  const systemPromptPath = path.join(
+    __dirname,
+    '..',
+    'prompts',
+    'claims',
+    'claim-provider-claim-system.md'
+  );
   const validatePromptPath = path.join(
     __dirname,
     '..',
     'prompts',
     'claims',
-    'claim-preapproval-validate-system.md'
+    'claim-provider-claim-validate-system.md'
   );
   const jsonSchemaPath = path.join(
     __dirname,
     '..',
     'prompts',
     'claims',
-    'claim-preapproval-json-schema.json'
+    'claim-provider-claim-json-schema.json'
   );
 
   const systemPrompt = await fs.promises.readFile(systemPromptPath, 'utf8');
@@ -96,7 +102,7 @@ function formatDateToMMddyyyy(value) {
   return null;
 }
 
-function buildIasPreApprovalPayload(mainSheet, memberInfoData) {
+function buildIasProviderClaimPayload(mainSheet, memberInfoData) {
   const memberRefNo = memberInfoData?.payload?.member?.MBR_REF_NO || null;
   const memberPlan = memberInfoData?.payload?.memberPlans?.[0] || {};
   const planCurrency = memberPlan?.plan?.SCMA_OID_CCY || '';
@@ -117,8 +123,9 @@ function buildIasPreApprovalPayload(mainSheet, memberInfoData) {
         ReceivedDate: receivedDate,
         SymptomDate: null,
         ClaimType: 'P',
-        TreatmentCountry: 'Myanmar',
+        TreatmentCountry: 'MYANMAR',
         BenefitType: mainSheet.benefit_type || null,
+        ProviderCode: mainSheet.provider_code || null,
         ProviderName: mainSheet.provider_name || null,
         IncurDateFrom: incurDateFrom,
         IncurDateTo: incurDateTo,
@@ -140,9 +147,9 @@ function buildIasPreApprovalPayload(mainSheet, memberInfoData) {
   };
 }
 
-async function submitClaimPreApprovalFromPaths(paths) {
-  const preApprovalResult = await processPreApproval(paths);
-  const mainSheet = preApprovalResult?.main_sheet || {};
+async function submitProviderClaimFromPaths(paths) {
+  const providerClaimResult = await processProviderClaim(paths);
+  const mainSheet = providerClaimResult?.main_sheet || {};
   const memberNrc = mainSheet.policy_no;
   const meplEffDate = mainSheet.incur_date_from;
 
@@ -153,18 +160,18 @@ async function submitClaimPreApprovalFromPaths(paths) {
   }
 
   const memberInfoData = await postMemberInfoByPolicy({ memberNrc, meplEffDate });
-  const preApprovalPayload = buildIasPreApprovalPayload(mainSheet, memberInfoData);
-  const iasResponse = await postClaimPreApproval(preApprovalPayload);
+  const providerClaimPayload = buildIasProviderClaimPayload(mainSheet, memberInfoData);
+  const iasResponse = await postProviderClaim(providerClaimPayload);
 
   return {
-    preApprovalResult,
-    preApprovalPayload,
+    providerClaimResult,
+    providerClaimPayload,
     iasResponse,
   };
 }
 
 module.exports = {
-  processPreApproval,
-  buildIasPreApprovalPayload,
-  submitClaimPreApprovalFromPaths,
+  processProviderClaim,
+  buildIasProviderClaimPayload,
+  submitProviderClaimFromPaths,
 };

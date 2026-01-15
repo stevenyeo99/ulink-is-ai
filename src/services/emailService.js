@@ -7,8 +7,8 @@ const {
   requestAssistantJsonCompletion,
   extractStructuredJson,
 } = require('./llmService');
-const { submitClaimPreApprovalFromPaths } = require('./claimService');
-const { replyNoAction, replyPreApproval } = require('./emailReplyService');
+const { submitProviderClaimFromPaths } = require('./claimService');
+const { replyNoAction, replyProviderClaim } = require('./emailReplyService');
 
 const debug = createDebug('app:service:email');
 
@@ -191,7 +191,7 @@ const decisionSchema = {
   schema: {
     type: 'object',
     properties: {
-      action: { type: 'string', enum: ['pre_approval', 'no_action'] },
+      action: { type: 'string', enum: ['provider_claim', 'no_action'] },
       reason: { type: 'string' },
       confidence: { type: 'number' },
     },
@@ -321,28 +321,28 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
           );
         }
 
-        if (decision.action === 'pre_approval') {
+        if (decision.action === 'provider_claim') {
           if (!storage.supportedAttachmentPaths.length) {
-            throw new Error('No supported PDF/image attachments for pre-approval');
+            throw new Error('No supported PDF/image attachments for provider claim');
           }
-          const { preApprovalResult, preApprovalPayload, iasResponse } =
-            await submitClaimPreApprovalFromPaths(storage.supportedAttachmentPaths);
+          const { providerClaimResult, providerClaimPayload, iasResponse } =
+            await submitProviderClaimFromPaths(storage.supportedAttachmentPaths);
           let payloadPath = null;
 
           if (storage.outputDir) {
-            const ocrPath = path.join(storage.outputDir, 'pre-approval-ocr.json');
+            const ocrPath = path.join(storage.outputDir, 'provider-claim-ocr.json');
             await fs.promises.writeFile(
               ocrPath,
-              `${JSON.stringify(preApprovalResult, null, 2)}\n`
+              `${JSON.stringify(providerClaimResult, null, 2)}\n`
             );
-            payloadPath = path.join(storage.outputDir, 'pre-approval-request-payload.json');
+            payloadPath = path.join(storage.outputDir, 'provider-claim-request-payload.json');
             await fs.promises.writeFile(
               payloadPath,
-              `${JSON.stringify(preApprovalPayload, null, 2)}\n`
+              `${JSON.stringify(providerClaimPayload, null, 2)}\n`
             );
           }
 
-          const replyResult = await replyPreApproval({
+          const replyResult = await replyProviderClaim({
             subject: parsed.subject || envelope.subject || null,
             to: formatAddressOnlyList(parsed.from?.value),
             payloadPath,
@@ -355,7 +355,7 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
             const replyPath = path.join(storage.outputDir, 'reply.json');
             await fs.promises.writeFile(
               replyPath,
-              `${JSON.stringify({ type: 'pre_approval', ...replyResult }, null, 2)}\n`
+              `${JSON.stringify({ type: 'provider_claim', ...replyResult }, null, 2)}\n`
             );
           }
         } else {

@@ -111,28 +111,28 @@ function isLikelyGarbled(text) {
 
 function formatIasResponseBlock(iasResponse) {
   if (!iasResponse) {
-    return 'IAS pre-approval response: (no response data available).';
+    return 'IAS provider claim response: (no response data available).';
   }
   if (typeof iasResponse === 'string') {
-    return `IAS pre-approval response: ${iasResponse}`;
+    return `IAS provider claim response: ${iasResponse}`;
   }
   const claimNo = iasResponse?.payload?.claimNo;
   if (iasResponse?.success === true && claimNo) {
     return [
-      `Pre-Approval Claim No ${claimNo} is successfully created on IAS.`,
+      `Provider Claim No ${claimNo} is successfully created on IAS.`,
       'You may review this claim on IAS.',
     ].join(' ');
   }
-  return ['IAS pre-approval response:', JSON.stringify(iasResponse, null, 2)].join('\n');
+  return ['IAS provider claim response:', JSON.stringify(iasResponse, null, 2)].join('\n');
 }
 
-function buildPreApprovalTemplate(claimNo) {
+function buildProviderClaimTemplate(claimNo) {
   return [
-    'Thank you for submitting the pre-approval request.',
+    'Thank you for submitting the provider claim request.',
     '',
-    `Pre-Approval Claim No ${claimNo} is successfully created on IAS. You may review this claim record on IAS.`,
+    `Provider Claim No ${claimNo} is successfully created on IAS. You may review this claim record on IAS.`,
     '',
-    'Also attached the request payload that being used by AI to trigger into IAS Pre-approval claim API',
+    'Also attached the request payload that being used by AI to trigger into IAS provider claim API',
     '',
     'Best Regards,',
     'ULINK AI Assistant',
@@ -140,21 +140,21 @@ function buildPreApprovalTemplate(claimNo) {
 }
 
 function buildFallbackReply({ type, subject, iasResponse }) {
-  if (type === 'pre_approval') {
+  if (type === 'provider_claim') {
     const claimNo = iasResponse?.payload?.claimNo;
     if (iasResponse?.success === true && claimNo) {
       return {
-        subject: subject || 'Pre-approval request',
-        body: buildPreApprovalTemplate(claimNo),
+        subject: subject || 'Provider claim request',
+        body: buildProviderClaimTemplate(claimNo),
       };
     }
     const responseBlock = formatIasResponseBlock(iasResponse);
     return {
-      subject: subject || 'Pre-approval request',
+      subject: subject || 'Provider claim request',
       body: [
         'Hello,',
         '',
-        'Thanks for your request. The attached JSON is the request payload that will be used to call the IAS claim pre-approval API.',
+        'Thanks for your request. The attached JSON is the request payload that will be used to call the IAS provider claim API.',
         '',
         responseBlock,
         '',
@@ -232,7 +232,7 @@ function appendIasResponseIfMissing(body, iasResponse) {
   if (!iasResponse) {
     return body;
   }
-  const marker = 'IAS pre-approval response';
+  const marker = 'IAS provider claim response';
   if (body.toLowerCase().includes(marker.toLowerCase())) {
     return body;
   }
@@ -247,21 +247,21 @@ function appendIasResponseIfMissing(body, iasResponse) {
   return [body.trim(), '', responseBlock].join('\n');
 }
 
-async function replyPreApproval({ subject, to, payloadPath, iasResponse, inReplyTo, references }) {
-  debug('Pre-approval reply queued for %s (subject: %s, payload: %s)', to, subject, payloadPath);
+async function replyProviderClaim({ subject, to, payloadPath, iasResponse, inReplyTo, references }) {
+  debug('Provider claim reply queued for %s (subject: %s, payload: %s)', to, subject, payloadPath);
   const claimNo = iasResponse?.payload?.claimNo;
   const { body, rawResponse } = await buildReplyFromLlm({
-    type: 'pre_approval',
+    type: 'provider_claim',
     subject,
     payloadPath,
     iasResponse,
   });
 
   const finalReply = isLikelyGarbled(body)
-    ? buildFallbackReply({ type: 'pre_approval', subject, iasResponse })
+    ? buildFallbackReply({ type: 'provider_claim', subject, iasResponse })
     : { subject, body: appendIasResponseIfMissing(body, iasResponse) };
   const finalBody =
-    iasResponse?.success === true && claimNo ? buildPreApprovalTemplate(claimNo) : finalReply.body;
+    iasResponse?.success === true && claimNo ? buildProviderClaimTemplate(claimNo) : finalReply.body;
 
   const attachments = payloadPath
     ? [
@@ -275,7 +275,7 @@ async function replyPreApproval({ subject, to, payloadPath, iasResponse, inReply
 
   const result = await sendEmail({
     to,
-    subject: subject || 'Pre-approval payload prepared',
+    subject: subject || 'Provider claim payload prepared',
     body: finalBody,
     attachments,
     inReplyTo,
@@ -297,5 +297,5 @@ async function replyPreApproval({ subject, to, payloadPath, iasResponse, inReply
 
 module.exports = {
   replyNoAction,
-  replyPreApproval,
+  replyProviderClaim,
 };
