@@ -10,5 +10,6 @@ router.use('/', healthRouter);
 router.use('/claim', claimRouter);
 router.use('/email', emailRouter);
 router.post('/provider_claim/json/excel', claimController.providerClaimJsonExcel);
+router.post('/member_claim/json', claimController.memberClaimJson);
 
 module.exports = router;

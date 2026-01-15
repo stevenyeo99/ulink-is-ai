@@ -1,0 +1,80 @@
+{
+  "type": "object",
+  "properties": {
+    "claimant_info": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "nrc": { "type": "string" },
+        "date_of_birth": { "type": "string" },
+        "gender": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "address": { "type": "string" }
+      }
+    },
+    "policy_info": {
+      "type": "object",
+      "properties": {
+        "policy_no": { "type": "string" },
+        "member_no": { "type": "string" },
+        "plan": { "type": "string" },
+        "effective_date": { "type": "string" }
+      }
+    },
+    "claim_info": {
+      "type": "object",
+      "properties": {
+        "claim_type": { "type": "string" },
+        "incident_date": { "type": "string" },
+        "report_date": { "type": "string" },
+        "diagnosis": { "type": "string" },
+        "treatment": { "type": "string" },
+        "provider_name": { "type": "string" },
+        "provider_address": { "type": "string" },
+        "country": { "type": "string" },
+        "currency": { "type": "string" },
+        "claimed_amount": { "type": "string" },
+        "description": { "type": "string" }
+      }
+    },
+    "bank_info": {
+      "type": "object",
+      "properties": {
+        "bank_name": { "type": "string" },
+        "account_name": { "type": "string" },
+        "account_no": { "type": "string" },
+        "branch": { "type": "string" }
+      }
+    },
+    "document_info": {
+      "type": "object",
+      "properties": {
+        "submitted_documents": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "missing_documents": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    },
+    "form_info": {
+      "type": "object",
+      "properties": {
+        "form_type": { "type": "string" },
+        "form_date": { "type": "string" },
+        "received_date": { "type": "string" }
+      }
+    },
+    "extra_fields": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "label": { "type": "string" },
+          "value": { "type": "string" }
+        }
+      }
+    }
+  }
+}

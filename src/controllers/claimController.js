@@ -1,5 +1,6 @@
 const {
   processProviderClaim,
+  processMemberClaim,
   buildIasProviderClaimPayload,
   submitProviderClaimFromPaths,
 } = require('../services/claimService');
@@ -27,6 +28,27 @@ async function providerClaimJson(req, res) {
     debug('Conversion error: %s', error.message);
     return res.status(500).json({
       error: 'Failed to process OCR with LLM',
+      detail: error.message,
+    });
+  }
+}
+
+async function memberClaimJson(req, res) {
+  const { paths } = req.body || {};
+
+  if (!Array.isArray(paths) || paths.length === 0) {
+    return res.status(400).json({ error: 'paths must be a non-empty array of file paths' });
+  }
+
+  debug('Received member claim OCR request for %d paths', paths.length);
+
+  try {
+    const extracted = await processMemberClaim(paths);
+    return res.status(200).json(extracted);
+  } catch (error) {
+    debug('Member claim OCR error: %s', error.message);
+    return res.status(500).json({
+      error: 'Failed to process member claim OCR with LLM',
       detail: error.message,
     });
   }
@@ -153,6 +175,7 @@ async function submitClaimProviderClaim(req, res) {
 
 module.exports = {
   providerClaimJson,
+  memberClaimJson,
   providerClaimJsonExcel,
   getMemberInfoByPolicy,
   prepareIasProviderClaimPayload,

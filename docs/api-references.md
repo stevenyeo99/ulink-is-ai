@@ -45,6 +45,9 @@
 - **POST** `/provider_claim/json/excel`
 - **Description**: Accepts a provider claim JSON payload and saves an Excel workbook (Main Sheet, Document Source Summary, Validation Summary tabs). Column headers replace underscores with spaces. Returns the saved file path.
 
+- **POST** `/member_claim/json`
+- **Description**: Accepts a list of file paths for member claim OCR. PDF inputs are converted to 300 DPI PNGs before OCR. Returns extracted JSON fields.
+
 ## Conventions
 - Content type: `application/json` for requests/responses unless noted.
 - Auth: not required for current endpoints; document when added.
