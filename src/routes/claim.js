@@ -11,6 +11,7 @@ router.post('/provider_claim/json/excel', claimController.providerClaimJsonExcel
 router.post('/ias/get_member_info_by_policy', claimController.getMemberInfoByPolicy);
 // Build IAS Provider Claim Payload API
 router.post('/ias/prepare_ias_provider_claim_payload', claimController.prepareIasProviderClaimPayload);
+
 // Submit Claim Provider Claim API
 router.post('/ias/claim_provider_claim', claimController.claimProviderClaim);
 
@@ -28,6 +29,11 @@ router.post('/member_claim/json', claimController.memberClaimJson);
 router.post(
   '/ias/prepare_ias_reimbursement_benefit_set',
   claimController.prepareIasReimbursementBenefitSetController
+);
+// Build IAS Reimbursement Claim Payload API
+router.post(
+  '/ias/prepare_ias_reimbursement_claim_payload',
+  claimController.prepareIasReimbursementClaimPayload
 );
 
 module.exports = router;

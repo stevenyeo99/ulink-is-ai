@@ -413,6 +413,61 @@ function buildIasProviderClaimPayload(mainSheet, memberInfoData) {
   };
 }
 
+function formatDateToYYYYMMDD(value) {
+  if (!value) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    const year = String(value.getFullYear());
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${year}${month}${day}`;
+  }
+
+  const parts = String(value).trim().split(/[\/-]/);
+  if (parts.length === 3) {
+    const [year, month, day] = parts;
+    if (year.length === 4) {
+      return `${year}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}`;
+    }
+    if (day.length === 4) {
+      return `${day}${String(month).padStart(2, '0')}${String(year).padStart(2, '0')}`;
+    }
+  }
+
+  const parsed = new Date(value);
+  if (!Number.isNaN(parsed.getTime())) {
+    const year = String(parsed.getFullYear());
+    const month = String(parsed.getMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getDate()).padStart(2, '0');
+    return `${year}${month}${day}`;
+  }
+
+  return null;
+}
+
+function buildIasReimbursementBenefitSetPayload(ocrPayload, memberInfoData) {
+  const benefitType = ocrPayload?.claim_info?.benefit_type ?? null;
+  const items = Array.isArray(ocrPayload?.items) ? ocrPayload.items : [];
+  const memberPlans = memberInfoData?.payload?.memberPlans;
+  const latestPlan = Array.isArray(memberPlans) ? memberPlans[memberPlans.length - 1] : memberPlans;
+  const coverageLimits = Array.isArray(latestPlan?.coverageLimits) ? latestPlan.coverageLimits : [];
+  const benefitList = coverageLimits
+    .flatMap((limit) => (limit.limit_type_code === 'H' &&Array.isArray(limit?.benefits) ? limit.benefits : []))
+    .filter(Boolean);
+
+  return {
+    ocr: {
+      benefit_type: benefitType,
+      items,
+    },
+    ias: {
+      benefitList,
+    },
+  };
+}
+
 async function submitProviderClaimFromPaths(paths) {
   const providerClaimResult = await processProviderClaim(paths);
   const mainSheet = providerClaimResult?.main_sheet || {};
@@ -440,6 +495,8 @@ module.exports = {
   processProviderClaim,
   processMemberClaim,
   prepareIasReimbursementBenefitSet,
+  formatDateToYYYYMMDD,
   buildIasProviderClaimPayload,
+  buildIasReimbursementBenefitSetPayload,
   submitProviderClaimFromPaths,
 };

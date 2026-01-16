@@ -15,5 +15,9 @@ router.post(
   '/ias/prepare_ias_reimbursement_benefit_set',
   claimController.prepareIasReimbursementBenefitSetController
 );
+router.post(
+  '/ias/prepare_ias_reimbursement_claim_payload',
+  claimController.prepareIasReimbursementClaimPayload
+);
 
 module.exports = router;

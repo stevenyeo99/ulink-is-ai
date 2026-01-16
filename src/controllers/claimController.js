@@ -4,6 +4,8 @@ const {
   buildIasProviderClaimPayload,
   submitProviderClaimFromPaths,
   prepareIasReimbursementBenefitSet,
+  formatDateToYYYYMMDD,
+  buildIasReimbursementBenefitSetPayload,
 } = require('../services/claimService');
 const { saveProviderClaimWorkbook } = require('../services/excelService');
 const { postMemberInfoByPolicy, postProviderClaim } = require('../services/iasService');
@@ -199,6 +201,54 @@ async function prepareIasReimbursementBenefitSetController(req, res) {
   }
 }
 
+async function prepareIasReimbursementClaimPayload(req, res) {
+  const ocrPayload = req.body || {};
+  const memberNrc = ocrPayload?.policy_info?.member_nrc;
+  const incurDate = ocrPayload?.claim_info?.incur_date;
+  const items = ocrPayload?.items;
+
+  if (!memberNrc || !incurDate) {
+    return res.status(400).json({
+      error: 'policy_info.member_nrc and claim_info.incur_date are required',
+    });
+  }
+
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({
+      error: 'items must be a non-empty array',
+    });
+  }
+
+  const meplEffDate = formatDateToYYYYMMDD(incurDate);
+  if (!meplEffDate) {
+    return res.status(400).json({
+      error: 'claim_info.incur_date must be a valid date',
+    });
+  }
+
+  try {
+    const memberInfoData = await postMemberInfoByPolicy({ memberNrc, meplEffDate });
+    const prepareBenefitSetPayload = buildIasReimbursementBenefitSetPayload(ocrPayload, memberInfoData);
+    const prepareBenefitSetResult = await prepareIasReimbursementBenefitSet(prepareBenefitSetPayload);
+
+    const prepareClaimApiPayload = {
+      ocrPayload,
+      memberInfoData,
+      prepareBenefitSetResult,
+    };
+
+    return res.status(200).json({
+      prepareClaimApiPayload
+    });
+  } catch (error) {
+    debug('IAS reimbursement claim payload error: %s', error.message);
+    return res.status(502).json({
+      error: 'Failed to prepare IAS reimbursement claim payload',
+      detail: error.detail || error.message,
+    });
+  }
+}
+
 module.exports = {
   providerClaimJson,
   memberClaimJson,
@@ -208,4 +258,5 @@ module.exports = {
   claimProviderClaim,
   submitClaimProviderClaim,
   prepareIasReimbursementBenefitSetController,
+  prepareIasReimbursementClaimPayload,
 };
