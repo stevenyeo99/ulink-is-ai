@@ -6,6 +6,7 @@ const {
   prepareIasReimbursementBenefitSet,
   formatDateToYYYYMMDD,
   buildIasReimbursementBenefitSetPayload,
+  buildIasReimbursementClaimPayload,
 } = require('../services/claimService');
 const { saveProviderClaimWorkbook } = require('../services/excelService');
 const { postMemberInfoByPolicy, postProviderClaim } = require('../services/iasService');
@@ -234,12 +235,13 @@ async function prepareIasReimbursementClaimPayload(req, res) {
     const prepareClaimApiPayload = {
       ocrPayload,
       memberInfoData,
+      prepareBenefitSetPayload,
       prepareBenefitSetResult,
     };
 
-    return res.status(200).json({
-      prepareClaimApiPayload
-    });
+    const claimRequestPayload = buildIasReimbursementClaimPayload(prepareClaimApiPayload);
+
+    return res.status(200).json(claimRequestPayload);
   } catch (error) {
     debug('IAS reimbursement claim payload error: %s', error.message);
     return res.status(502).json({

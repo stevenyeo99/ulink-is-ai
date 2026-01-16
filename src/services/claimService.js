@@ -351,8 +351,22 @@ function formatDateToMMddyyyy(value) {
 
   const parts = String(value).trim().split(/[\/-]/);
   if (parts.length === 3) {
-    const [day, month, year] = parts;
-    if (day && month && year) {
+    const [part1, part2, part3] = parts;
+    let year = null;
+    let month = null;
+    let day = null;
+
+    if (part1.length === 4) {
+      year = part1;
+      month = part2;
+      day = part3;
+    } else if (part3.length === 4) {
+      year = part3;
+      month = part2;
+      day = part1;
+    }
+
+    if (year && month && day) {
       return `${month.padStart(2, '0')}${day.padStart(2, '0')}${year}`;
     }
   }
@@ -468,6 +482,83 @@ function buildIasReimbursementBenefitSetPayload(ocrPayload, memberInfoData) {
   };
 }
 
+function normalizeCurrency(value) {
+  if (!value) {
+    return null;
+  }
+  return String(value).replace(/^CCY_/, '');
+}
+
+function normalizeAmount(value) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value === 'number') {
+    return value;
+  }
+  const normalized = String(value).replace(/,/g, '').trim();
+  if (!normalized) {
+    return null;
+  }
+  const parsed = Number(normalized);
+  return Number.isNaN(parsed) ? normalized : parsed;
+}
+
+function buildIasReimbursementClaimPayload(prepareClaimApiPayload) {
+  const memberRefNo = prepareClaimApiPayload?.memberInfoData?.payload?.member?.MBR_REF_NO ?? null;
+  const claimInfo = prepareClaimApiPayload?.ocrPayload?.claim_info || {};
+  const bankInfo = prepareClaimApiPayload?.ocrPayload?.bank_info || {};
+  const policyInfo = prepareClaimApiPayload?.ocrPayload?.policy_info || {};
+  const benefitResults = Array.isArray(prepareClaimApiPayload?.prepareBenefitSetResult)
+    ? prepareClaimApiPayload.prepareBenefitSetResult
+    : [];
+  const memberPlans = prepareClaimApiPayload?.memberInfoData?.payload?.memberPlans || [];
+  const plan = Array.isArray(memberPlans) ? memberPlans[0]?.plan : memberPlans?.plan;
+  const meplOid = Array.isArray(memberPlans) ? memberPlans[0]?.MEPL_OID : memberPlans?.MEPL_OID;
+  const currency = normalizeCurrency(plan?.SCMA_OID_CCY);
+  const paymentMethod =
+    prepareClaimApiPayload?.memberInfoData?.payload?.member?.SCMA_OID_CL_PAY_METHOD ||
+    'CL_PAY_METHOD_AT';
+
+  const incurDate = claimInfo?.incur_date;
+  const formattedIncurDate = formatDateToMMddyyyy(incurDate);
+  const formattedReceivedDate = formatDateToMMddyyyy(claimInfo?.received_date);
+
+  const items = benefitResults.map((item) => ({
+    DiagnosisCode: claimInfo?.diagnosis_code ?? null,
+    DiagnosisCodeDesc: claimInfo?.diagnosis ?? null,
+    DiagnosisDescription: claimInfo?.diagnosis_remark ?? null,
+    InvoiceID: 'NIL',
+    ReceivedDate: formattedReceivedDate,
+    SymptomDate: null,
+    ClaimType: 'M',
+    TreatmentCountry: 'MYANMAR',
+    BenefitType: item?.benefit_type_code ?? null,
+    BenefitHead: item?.benefit_head_code ?? null,
+    ProviderName: claimInfo?.provider_name ?? null,
+    IncurDateFrom: formattedIncurDate,
+    IncurDateTo: formattedIncurDate,
+    PresentedCurrency: currency,
+    PresentedAmt: normalizeAmount(item?.amount),
+    ExchangeRate: 1,
+    PaymentCurrency: currency,
+    PaymentExchangeRate: 1,
+    PaymentMethod: paymentMethod,
+    PlanId: plan?.PLAN_ID ?? null,
+    MeplOid: meplOid ?? null,
+    BankName: bankInfo?.bank_name ?? null,
+    BankAcctNo: bankInfo?.account_no ?? null,
+    BankAcctName: bankInfo?.account_name ?? null,
+    PayeeEmail: policyInfo?.member_email ?? null,
+  }));
+
+  return {
+    MemberRefNo: memberRefNo,
+    isValidation: 'Y',
+    Items: items,
+  };
+}
+
 async function submitProviderClaimFromPaths(paths) {
   const providerClaimResult = await processProviderClaim(paths);
   const mainSheet = providerClaimResult?.main_sheet || {};
@@ -498,5 +589,6 @@ module.exports = {
   formatDateToYYYYMMDD,
   buildIasProviderClaimPayload,
   buildIasReimbursementBenefitSetPayload,
+  buildIasReimbursementClaimPayload,
   submitProviderClaimFromPaths,
 };
