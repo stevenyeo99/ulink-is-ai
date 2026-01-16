@@ -187,6 +187,9 @@ async function requestAssistantJsonCompletion({
     'Assistant LLM responded with %d choice(s)',
     Array.isArray(data?.choices) ? data.choices.length : 0
   );
+
+  console.log('Assistant LLM Response:', JSON.stringify(data, null, 2));
+
   return data;
 }
 
@@ -215,10 +218,24 @@ function extractStructuredJson(llmResponse) {
     throw new Error('LLM response contained no choices');
   }
 
+  const parseJsonWithRepair = (value) => {
+    try {
+      return JSON.parse(value);
+    } catch (error) {
+      const repaired = repairUnescapedQuotes(value);
+      return JSON.parse(repaired);
+    }
+  };
+
   const content = choice.message?.content;
+  console.log('LLM message', choice.message)
+  console.log('LLM Response Content:', content);
 
   if (typeof content === 'string') {
-    return JSON.parse(content);
+    console.log('Json String Content Return');
+    const jsonResult = parseJsonWithRepair(content);
+    console.log('Parsed JSON Result:', jsonResult);
+    return jsonResult;
   }
 
   if (Array.isArray(content)) {
@@ -231,8 +248,56 @@ function extractStructuredJson(llmResponse) {
       throw new Error('LLM response content is empty');
     }
 
-    return JSON.parse(text);
+    return parseJsonWithRepair(text);
   }
 
   throw new Error('Unsupported LLM content format');
+}
+
+function repairUnescapedQuotes(text) {
+  if (typeof text !== 'string' || !text.includes('"')) {
+    return text;
+  }
+  let result = '';
+  let inString = false;
+  let escaped = false;
+
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+    if (inString) {
+      if (escaped) {
+        result += char;
+        escaped = false;
+        continue;
+      }
+      if (char === '\\') {
+        result += char;
+        escaped = true;
+        continue;
+      }
+      if (char === '"') {
+        let j = i + 1;
+        while (j < text.length && /\s/.test(text[j])) {
+          j += 1;
+        }
+        const next = j < text.length ? text[j] : '';
+        if (!next || next === ',' || next === '}' || next === ']' || next === ':') {
+          inString = false;
+          result += char;
+        } else {
+          result += '\\"';
+        }
+        continue;
+      }
+      result += char;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+    }
+    result += char;
+  }
+
+  return result;
 }

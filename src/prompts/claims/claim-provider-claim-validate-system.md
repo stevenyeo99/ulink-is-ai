@@ -81,3 +81,4 @@ If uncertain, leave both empty.
 
 Return ONLY the updated JSON object. No text, no markdown.
 You MUST NOT include any explanations, analysis text, or keys like "analysis" in the output. Only return the updated JSON object.
+If any string value includes a double quote character, escape it as \". Do not include unescaped double quotes inside JSON strings.

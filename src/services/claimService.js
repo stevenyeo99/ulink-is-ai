@@ -41,6 +41,9 @@ async function processProviderClaim(paths) {
   const jsonSchema = JSON.parse(jsonSchemaRaw);
 
   const conversions = await convertFilesToJpeg300ppi(paths);
+
+  console.log('Image Conversion Results:', conversions);
+
   const successfulConversions = conversions.filter((item) => item.status === 'success' && item.outputPath);
 
   if (successfulConversions.length === 0) {
@@ -63,12 +66,22 @@ async function processProviderClaim(paths) {
 
   const structured = extractStructuredJson(llmResponse);
 
+  console.log(`First Prompt LLM Structured Output: ${JSON.stringify(structured, null, 2)}`);
+
+  console.log('Begin run Assistant validation prompt...');
   const validateResponse = await requestAssistantJsonCompletion({
     systemPrompt: validatePrompt,
     inputJson: structured,
   });
+  console.log('Finish run Assistant validation prompt...');
 
-  return extractStructuredJson(validateResponse);
+  console.log('Begin extract structured from validation response...');
+  const secondStructured = extractStructuredJson(validateResponse);
+  console.log('Finish extract structured from validation response...');
+
+  console.log(`Second Prompt LLM Structured Output: ${JSON.stringify(secondStructured, null, 2)}`);
+
+  return secondStructured;
 }
 
 async function processMemberClaim(paths) {
@@ -683,7 +696,10 @@ async function processReimbursementClaimFromPaths(paths, options = {}) {
 }
 
 async function submitProviderClaimFromPaths(paths) {
+  console.log('Submitting provider claim for paths:', paths);
   const providerClaimResult = await processProviderClaim(paths);
+
+  console.log('Provider Claim OCR Result:', providerClaimResult);
   const mainSheet = providerClaimResult?.main_sheet || {};
   const memberNrc = mainSheet.policy_no;
   const meplEffDate = mainSheet.incur_date_from;

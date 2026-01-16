@@ -36,6 +36,29 @@ function parseInteger(value, fallback) {
   return Number.isNaN(parsed) ? fallback : parsed;
 }
 
+function withTimeout(promise, timeoutMs, label) {
+  if (!timeoutMs) {
+    return promise;
+  }
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      const suffix = label ? ` (${label})` : '';
+      const error = new Error(`Timed out after ${timeoutMs}ms${suffix}`);
+      error.code = 'ETIMEDOUT';
+      reject(error);
+    }, timeoutMs);
+    promise
+      .then((result) => {
+        clearTimeout(timer);
+        resolve(result);
+      })
+      .catch((error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+  });
+}
+
 function getImapConfig() {
   const host = process.env.IMAP_HOST;
   const user = process.env.IMAP_USER;
@@ -53,6 +76,7 @@ function getImapConfig() {
     password,
     importBaseDir: process.env.IMAP_IMPORT_BASE_DIR || null,
     importLimit: parseInteger(process.env.IMAP_IMPORT_LIMIT, undefined),
+    messageTimeoutMs: parseInteger(process.env.IMAP_MESSAGE_TIMEOUT_MS, undefined),
   };
 }
 
@@ -289,146 +313,173 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
       let processed = false;
       let decisionSummary = null;
 
-      const parsed = await simpleParser(message.source);
-      const storage = await saveParsedMessage(config.importBaseDir, message, parsed);
-      const envelope = message.envelope || {};
+      const processMessage = async () => {
+        let localProcessed = false;
+        const parsed = await simpleParser(message.source);
+        const storage = await saveParsedMessage(config.importBaseDir, message, parsed);
+        const envelope = message.envelope || {};
 
-      try {
-        const decisionInput = {
-          subject: parsed.subject || envelope.subject || null,
-          from: formatAddressOnlyList(parsed.from?.value),
-          cc: formatAddressOnlyList(parsed.cc?.value),
-          date: message.internalDate ? new Date(message.internalDate).toISOString() : null,
-          body: parsed.text || parsed.html || '',
-          attachments: storage.attachments,
-        };
-
-        const { decision, rawResponse } = await decideEmailAction(decisionInput);
-        decisionSummary = decision;
-
-        if (storage.metadataPath) {
-          const updatedMetadata = {
-            subject: parsed.subject || null,
+        try {
+          const decisionInput = {
+            subject: parsed.subject || envelope.subject || null,
             from: formatAddressOnlyList(parsed.from?.value),
             cc: formatAddressOnlyList(parsed.cc?.value),
-            llm_decision: {
-              ...decision,
-              raw_response: rawResponse,
-              decided_at: new Date().toISOString(),
-            },
+            date: message.internalDate ? new Date(message.internalDate).toISOString() : null,
+            body: parsed.text || parsed.html || '',
+            attachments: storage.attachments,
           };
-          await fs.promises.writeFile(
-            storage.metadataPath,
-            `${JSON.stringify(updatedMetadata, null, 2)}\n`
-          );
-        }
 
-        if (decision.action === 'provider_claim') {
-          if (!storage.supportedAttachmentPaths.length) {
-            throw new Error('No supported PDF/image attachments for provider claim');
-          }
-          const { providerClaimResult, providerClaimPayload, iasResponse } =
-            await submitProviderClaimFromPaths(storage.supportedAttachmentPaths);
-          let payloadPath = null;
-          let ocrPath = null;
-          let excelPath = null;
+          const { decision, rawResponse } = await decideEmailAction(decisionInput);
+          decisionSummary = decision;
 
-          if (storage.outputDir) {
-            ocrPath = path.join(storage.outputDir, 'provider-claim-ocr.json');
+          if (storage.metadataPath) {
+            const updatedMetadata = {
+              subject: parsed.subject || null,
+              from: formatAddressOnlyList(parsed.from?.value),
+              cc: formatAddressOnlyList(parsed.cc?.value),
+              llm_decision: {
+                ...decision,
+                raw_response: rawResponse,
+                decided_at: new Date().toISOString(),
+              },
+            };
             await fs.promises.writeFile(
-              ocrPath,
-              `${JSON.stringify(providerClaimResult, null, 2)}\n`
+              storage.metadataPath,
+              `${JSON.stringify(updatedMetadata, null, 2)}\n`
             );
-            payloadPath = path.join(storage.outputDir, 'provider-claim-request-payload.json');
-            await fs.promises.writeFile(
+          }
+
+          if (decision.action === 'provider_claim') {
+            if (!storage.supportedAttachmentPaths.length) {
+              throw new Error('No supported PDF/image attachments for provider claim');
+            }
+            const { providerClaimResult, providerClaimPayload, iasResponse } =
+              await submitProviderClaimFromPaths(storage.supportedAttachmentPaths);
+            let payloadPath = null;
+            let ocrPath = null;
+            let excelPath = null;
+
+            if (storage.outputDir) {
+              ocrPath = path.join(storage.outputDir, 'provider-claim-ocr.json');
+              await fs.promises.writeFile(
+                ocrPath,
+                `${JSON.stringify(providerClaimResult, null, 2)}\n`
+              );
+              payloadPath = path.join(storage.outputDir, 'provider-claim-request-payload.json');
+              await fs.promises.writeFile(
+                payloadPath,
+                `${JSON.stringify(providerClaimPayload, null, 2)}\n`
+              );
+              excelPath = await saveProviderClaimWorkbook(providerClaimResult, {
+                dir: storage.outputDir,
+                filename: 'llm_prompt_document_result.xlsx',
+              });
+            }
+
+            const replyResult = await replyProviderClaim({
+              subject: parsed.subject || envelope.subject || null,
+              to: formatAddressOnlyList(parsed.from?.value),
               payloadPath,
-              `${JSON.stringify(providerClaimPayload, null, 2)}\n`
-            );
-            excelPath = await saveProviderClaimWorkbook(providerClaimResult, {
-              dir: storage.outputDir,
-              filename: 'llm_prompt_document_result.xlsx',
+              ocrPath,
+              excelPath,
+              iasResponse,
+              inReplyTo: parsed.messageId || envelope.messageId || null,
+              references: parsed.messageId || envelope.messageId || null,
             });
-          }
 
-          const replyResult = await replyProviderClaim({
-            subject: parsed.subject || envelope.subject || null,
-            to: formatAddressOnlyList(parsed.from?.value),
-            payloadPath,
-            ocrPath,
-            excelPath,
-            iasResponse,
-            inReplyTo: parsed.messageId || envelope.messageId || null,
-            references: parsed.messageId || envelope.messageId || null,
-          });
-
-          if (storage.outputDir) {
-            const replyPath = path.join(storage.outputDir, 'reply.json');
-            await fs.promises.writeFile(
-              replyPath,
-              `${JSON.stringify({ type: 'provider_claim', ...replyResult }, null, 2)}\n`
+            if (storage.outputDir) {
+              const replyPath = path.join(storage.outputDir, 'reply.json');
+              await fs.promises.writeFile(
+                replyPath,
+                `${JSON.stringify({ type: 'provider_claim', ...replyResult }, null, 2)}\n`
+              );
+            }
+          } else if (decision.action === 'reimbursement_claim') {
+            if (!storage.supportedAttachmentPaths.length) {
+              throw new Error('No supported PDF/image attachments for reimbursement claim');
+            }
+            const result = await processReimbursementClaimFromPaths(
+              storage.supportedAttachmentPaths
             );
-          }
-        } else if (decision.action === 'reimbursement_claim') {
-          if (!storage.supportedAttachmentPaths.length) {
-            throw new Error('No supported PDF/image attachments for reimbursement claim');
-          }
-          const result = await processReimbursementClaimFromPaths(storage.supportedAttachmentPaths);
-          let downloadedFilePath = result.downloadedFilePath;
-          if (storage.outputDir && downloadedFilePath) {
-            const targetPath = path.join(storage.outputDir, path.basename(downloadedFilePath));
-            if (targetPath !== downloadedFilePath) {
-              try {
-                await fs.promises.copyFile(downloadedFilePath, targetPath);
-                downloadedFilePath = targetPath;
-              } catch (error) {
-                debug(
-                  'Failed to copy reimbursement download to email folder (%s): %s',
-                  targetPath,
-                  error.message
-                );
+            let downloadedFilePath = result.downloadedFilePath;
+            if (storage.outputDir && downloadedFilePath) {
+              const targetPath = path.join(storage.outputDir, path.basename(downloadedFilePath));
+              if (targetPath !== downloadedFilePath) {
+                try {
+                  await fs.promises.copyFile(downloadedFilePath, targetPath);
+                  downloadedFilePath = targetPath;
+                } catch (error) {
+                  debug(
+                    'Failed to copy reimbursement download to email folder (%s): %s',
+                    targetPath,
+                    error.message
+                  );
+                }
               }
+            }
+
+            const replyResult = await replyReimbursementClaim({
+              subject: parsed.subject || envelope.subject || null,
+              to: formatAddressOnlyList(parsed.from?.value),
+              claimNo: result.claimNo,
+              claimStatusResponse: result.claimStatusResponse,
+              submissionResponse: result.submissionResponse,
+              downloadedFilePath,
+              inReplyTo: parsed.messageId || envelope.messageId || null,
+              references: parsed.messageId || envelope.messageId || null,
+            });
+
+            if (storage.outputDir) {
+              const replyPath = path.join(storage.outputDir, 'reply.json');
+              await fs.promises.writeFile(
+                replyPath,
+                `${JSON.stringify({ type: 'reimbursement_claim', ...replyResult }, null, 2)}\n`
+              );
+            }
+          } else {
+            const replyResult = await replyNoAction({
+              subject: parsed.subject || envelope.subject || null,
+              to: formatAddressOnlyList(parsed.from?.value),
+              reason: decision.reason || null,
+              inReplyTo: parsed.messageId || envelope.messageId || null,
+              references: parsed.messageId || envelope.messageId || null,
+            });
+
+            if (storage.outputDir) {
+              const replyPath = path.join(storage.outputDir, 'reply.json');
+              await fs.promises.writeFile(
+                replyPath,
+                `${JSON.stringify({ type: 'no_action', ...replyResult }, null, 2)}\n`
+              );
             }
           }
 
-          const replyResult = await replyReimbursementClaim({
-            subject: parsed.subject || envelope.subject || null,
-            to: formatAddressOnlyList(parsed.from?.value),
-            claimNo: result.claimNo,
-            claimStatusResponse: result.claimStatusResponse,
-            submissionResponse: result.submissionResponse,
-            downloadedFilePath,
-            inReplyTo: parsed.messageId || envelope.messageId || null,
-            references: parsed.messageId || envelope.messageId || null,
-          });
-
-          if (storage.outputDir) {
-            const replyPath = path.join(storage.outputDir, 'reply.json');
-            await fs.promises.writeFile(
-              replyPath,
-              `${JSON.stringify({ type: 'reimbursement_claim', ...replyResult }, null, 2)}\n`
-            );
-          }
-        } else {
-          const replyResult = await replyNoAction({
-            subject: parsed.subject || envelope.subject || null,
-            to: formatAddressOnlyList(parsed.from?.value),
-            reason: decision.reason || null,
-            inReplyTo: parsed.messageId || envelope.messageId || null,
-            references: parsed.messageId || envelope.messageId || null,
-          });
-
-          if (storage.outputDir) {
-            const replyPath = path.join(storage.outputDir, 'reply.json');
-            await fs.promises.writeFile(
-              replyPath,
-              `${JSON.stringify({ type: 'no_action', ...replyResult }, null, 2)}\n`
-            );
-          }
+          localProcessed = true;
+        } catch (error) {
+          debug('Email processing failed for uid %s: %s', message.uid, error.message);
         }
 
-        processed = true;
+        return { storage, envelope, processed: localProcessed };
+      };
+
+      let envelope = message.envelope || {};
+      let storage = {
+        outputDir: null,
+      };
+
+      try {
+        const result = config.messageTimeoutMs
+          ? await withTimeout(
+              processMessage(),
+              config.messageTimeoutMs,
+              `uid ${message.uid}`
+            )
+          : await processMessage();
+        envelope = result.envelope || envelope;
+        storage = result.storage || storage;
+        processed = Boolean(result.processed);
       } catch (error) {
-        debug('Email processing failed for uid %s: %s', message.uid, error.message);
+        debug('Email processing timeout for uid %s: %s', message.uid, error.message);
       }
 
       results.push({
