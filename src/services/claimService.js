@@ -145,6 +145,7 @@ async function prepareIasReimbursementBenefitSet(payload) {
     systemPrompt,
     inputJson: payload,
     jsonSchema: reimbursementBenefitSchema(expectedCount),
+    model: process.env.MODEL || null
   });
   console.log(`LLM Response: ${JSON.stringify(response, null, 2)}`);
 
@@ -205,7 +206,7 @@ async function prepareIasReimbursementBenefitSet(payload) {
 
     if (result.length !== expectedCount) {
       const sourceItems = Array.isArray(payload?.ocr?.items) ? payload.ocr.items : [];
-      return normalizeBenefitSetOutput(result, sourceItems, {
+      return normalizeBenefitSetOutput(result, sourceItems, payload?.ocr?.benefit_type, {
         allowedPairs,
         allowedBenefitTypes,
         allowedBenefitHeads,
@@ -214,14 +215,14 @@ async function prepareIasReimbursementBenefitSet(payload) {
   }
 
   const sourceItems = Array.isArray(payload?.ocr?.items) ? payload.ocr.items : [];
-  return normalizeBenefitSetOutput(result, sourceItems, {
+  return normalizeBenefitSetOutput(result, sourceItems, payload?.ocr?.benefit_type, {
     allowedPairs,
     allowedBenefitTypes,
     allowedBenefitHeads,
   });
 }
 
-function normalizeBenefitSetOutput(items, sourceItems, allowed) {
+function normalizeBenefitSetOutput(items, sourceItems, benefitTypeLabel, allowed) {
   const mapping = new Map();
   for (const entry of items) {
     if (!entry || typeof entry !== 'object') continue;
@@ -234,14 +235,37 @@ function normalizeBenefitSetOutput(items, sourceItems, allowed) {
     const safeItem = mapping.get(index) || {};
     const benefit = source?.benefit ?? null;
     const amount = source?.amount ?? null;
-    const benefitTypeCode = safeItem?.benefit_type_code ?? null;
-    const benefitHeadCode = safeItem?.benefit_head_code ?? null;
-  let matchReason = typeof safeItem?.match_reason === 'string' ? safeItem.match_reason : '';
+    let benefitTypeCode = safeItem?.benefit_type_code ?? null;
+    let benefitHeadCode = safeItem?.benefit_head_code ?? null;
+    let matchReason = typeof safeItem?.match_reason === 'string' ? safeItem.match_reason : '';
 
   matchReason = matchReason.replace(/[^\x20-\x7E]/g, '').trim();
   if (matchReason !== 'match' && matchReason !== 'no_match') {
     matchReason = 'no_match';
   }
+
+    if (
+      typeof benefit === 'string' &&
+      typeof benefitTypeLabel === 'string' &&
+      benefitTypeLabel.toLowerCase() === 'outpatient' &&
+      benefit.toLowerCase().includes('service fee') &&
+      allowed.allowedPairs.has('OP::OV')
+    ) {
+      benefitTypeCode = 'OP';
+      benefitHeadCode = 'OV';
+      matchReason = 'match';
+    }
+    if (
+      typeof benefit === 'string' &&
+      typeof benefitTypeLabel === 'string' &&
+      benefitTypeLabel.toLowerCase() === 'outpatient' &&
+      (benefit.toLowerCase().includes('consultant') || benefit.toLowerCase().includes('consultation')) &&
+      allowed.allowedPairs.has('OP::SP')
+    ) {
+      benefitTypeCode = 'OP';
+      benefitHeadCode = 'SP';
+      matchReason = 'match';
+    }
 
     let normalizedType = benefitTypeCode;
     let normalizedHead = benefitHeadCode;
@@ -254,6 +278,9 @@ function normalizeBenefitSetOutput(items, sourceItems, allowed) {
         normalizedHead = null;
         matchReason = 'no_match';
       }
+    }
+    if (normalizedType && normalizedHead && allowed.allowedPairs.has(`${normalizedType}::${normalizedHead}`)) {
+      matchReason = 'match';
     }
 
     return {
