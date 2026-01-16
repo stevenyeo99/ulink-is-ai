@@ -35,5 +35,7 @@ router.post(
   '/ias/prepare_ias_reimbursement_claim_payload',
   claimController.prepareIasReimbursementClaimPayload
 );
+// Submit Reimbursement Claim API
+router.post('/ias/submit/reimbursement_claim', claimController.submitReimbursementClaim);
 
 module.exports = router;

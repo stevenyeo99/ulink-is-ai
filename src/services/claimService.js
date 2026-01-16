@@ -6,7 +6,7 @@ const {
   extractStructuredJson,
 } = require('./llmService');
 const { convertFilesToJpeg300ppi, convertFilesToPng300dpi } = require('./imageService');
-const { postMemberInfoByPolicy, postProviderClaim } = require('./iasService');
+const { postMemberInfoByPolicy, postClaimSubmission } = require('./iasService');
 
 async function processProviderClaim(paths) {
   if (!Array.isArray(paths) || paths.length === 0) {
@@ -603,7 +603,7 @@ async function submitProviderClaimFromPaths(paths) {
 
   const memberInfoData = await postMemberInfoByPolicy({ memberNrc, meplEffDate });
   const providerClaimPayload = buildIasProviderClaimPayload(mainSheet, memberInfoData);
-  const iasResponse = await postProviderClaim(providerClaimPayload);
+  const iasResponse = await postClaimSubmission(providerClaimPayload);
 
   return {
     providerClaimResult,

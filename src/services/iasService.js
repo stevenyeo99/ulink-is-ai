@@ -58,16 +58,16 @@ async function postMemberInfoByPolicy({ memberNrc, meplEffDate }) {
 
 module.exports = {
   postMemberInfoByPolicy,
-  postProviderClaim,
+  postClaimSubmission,
 };
 
-async function postProviderClaim(payload) {
+async function postClaimSubmission(payload) {
   if (!payload || typeof payload !== 'object') {
     throw new Error('payload is required');
   }
 
   const url = buildIasUrl(process.env.CL_CLAIM_API);
-  console.log('IAS Provider Claim URL:', url);
+  console.log('IAS Claim Submission URL:', url);
   const response = await fetch(url, {
     method: 'POST',
     headers: {
@@ -76,7 +76,7 @@ async function postProviderClaim(payload) {
     },
     body: JSON.stringify(payload),
   });
-  console.log('IAS Provider Claim Payload:', JSON.stringify(payload));
+  console.log('IAS Claim Submission Payload:', JSON.stringify(payload));
 
   const text = await response.text();
   let data = null;
@@ -88,12 +88,12 @@ async function postProviderClaim(payload) {
       data = { raw: text };
     }
   }
-  console.log('IAS Provider Claim Response:', data);
+  console.log('IAS Claim Submission Response:', data);
 
   if (!response.ok) {
     const detail = data || { raw: text };
-    debug('IAS provider claim request failed (%s): %o', response.status, detail);
-    const err = new Error(`IAS provider claim request failed with status ${response.status}`);
+    debug('IAS claim submission request failed (%s): %o', response.status, detail);
+    const err = new Error(`IAS claim submission request failed with status ${response.status}`);
     err.status = response.status;
     err.detail = detail;
     throw err;

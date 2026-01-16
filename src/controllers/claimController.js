@@ -9,7 +9,7 @@ const {
   buildIasReimbursementClaimPayload,
 } = require('../services/claimService');
 const { saveProviderClaimWorkbook } = require('../services/excelService');
-const { postMemberInfoByPolicy, postProviderClaim } = require('../services/iasService');
+const { postMemberInfoByPolicy, postClaimSubmission } = require('../services/iasService');
 const createDebug = require('debug');
 const os = require('os');
 const path = require('path');
@@ -140,7 +140,7 @@ async function claimProviderClaim(req, res) {
   }
 
   try {
-    const data = await postProviderClaim(payload);
+    const data = await postClaimSubmission(payload);
     return res.status(200).json(data);
   } catch (error) {
     debug('IAS provider claim error: %s', error.message);
@@ -251,6 +251,27 @@ async function prepareIasReimbursementClaimPayload(req, res) {
   }
 }
 
+async function submitReimbursementClaim(req, res) {
+  const payload = req.body || {};
+
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return res.status(400).json({
+      error: 'payload must be a JSON object',
+    });
+  }
+
+  try {
+    const data = await postClaimSubmission(payload);
+    return res.status(200).json(data);
+  } catch (error) {
+    debug('IAS reimbursement claim error: %s', error.message);
+    return res.status(502).json({
+      error: 'Failed to call IAS reimbursement claim API',
+      detail: error.detail || error.message,
+    });
+  }
+}
+
 module.exports = {
   providerClaimJson,
   memberClaimJson,
@@ -261,4 +282,5 @@ module.exports = {
   submitClaimProviderClaim,
   prepareIasReimbursementBenefitSetController,
   prepareIasReimbursementClaimPayload,
+  submitReimbursementClaim,
 };
