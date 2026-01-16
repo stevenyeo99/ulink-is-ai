@@ -301,6 +301,8 @@ function buildReimbursementClaimTemplate({
     '',
     'Your claim has been successfully processed by our system.',
     'Please find the claim result below, and the CSR document is attached for your reference.',
+    'OCR extracted in JSON format can refer to ocr-json-extract.json.',
+    'Request payload being used to submit reimbursement API can refer to reimbursement-claim-request-payload.json.',
     '',
     'Claim Summary',
     '',
@@ -528,6 +530,8 @@ async function replyReimbursementClaim({
   claimStatusResponse,
   submissionResponse,
   downloadedFilePath,
+  ocrPayloadPath,
+  claimPayloadPath,
   inReplyTo,
   references,
 }) {
@@ -565,6 +569,18 @@ async function replyReimbursementClaim({
     attachments.push({
       filename: path.basename(downloadedFilePath),
       path: downloadedFilePath,
+    });
+  }
+  if (ocrPayloadPath) {
+    attachments.push({
+      filename: path.basename(ocrPayloadPath),
+      path: ocrPayloadPath,
+    });
+  }
+  if (claimPayloadPath) {
+    attachments.push({
+      filename: path.basename(claimPayloadPath),
+      path: claimPayloadPath,
     });
   }
 

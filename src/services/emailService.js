@@ -402,6 +402,8 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
               storage.supportedAttachmentPaths
             );
             let downloadedFilePath = result.downloadedFilePath;
+            let ocrPayloadPath = null;
+            let claimPayloadPath = null;
             if (storage.outputDir && downloadedFilePath) {
               const targetPath = path.join(storage.outputDir, path.basename(downloadedFilePath));
               if (targetPath !== downloadedFilePath) {
@@ -417,6 +419,25 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
                 }
               }
             }
+            if (storage.outputDir) {
+              if (result.llmOcrPayload) {
+                ocrPayloadPath = path.join(storage.outputDir, 'ocr-json-extract.json');
+                await fs.promises.writeFile(
+                  ocrPayloadPath,
+                  `${JSON.stringify(result.llmOcrPayload, null, 2)}\n`
+                );
+              }
+              if (result.claimSubmissionPayload) {
+                claimPayloadPath = path.join(
+                  storage.outputDir,
+                  'reimbursement-claim-request-payload.json'
+                );
+                await fs.promises.writeFile(
+                  claimPayloadPath,
+                  `${JSON.stringify(result.claimSubmissionPayload, null, 2)}\n`
+                );
+              }
+            }
 
             const replyResult = await replyReimbursementClaim({
               subject: parsed.subject || envelope.subject || null,
@@ -425,6 +446,8 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
               claimStatusResponse: result.claimStatusResponse,
               submissionResponse: result.submissionResponse,
               downloadedFilePath,
+              ocrPayloadPath,
+              claimPayloadPath,
               inReplyTo: parsed.messageId || envelope.messageId || null,
               references: parsed.messageId || envelope.messageId || null,
             });

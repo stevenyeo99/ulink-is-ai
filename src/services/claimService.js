@@ -689,6 +689,7 @@ async function processReimbursementClaimFromPaths(paths, options = {}) {
   return {
     claimNo,
     downloadedFilePath: downloadResult.path,
+    llmOcrPayload,
     claimSubmissionPayload,
     claimStatusResponse,
     submissionResponse,
