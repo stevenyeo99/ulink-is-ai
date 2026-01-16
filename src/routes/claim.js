@@ -39,5 +39,7 @@ router.post(
 router.post('/ias/submit/reimbursement_claim', claimController.submitReimbursementClaim);
 // Claim Status API
 router.post('/ias/get_claim_status', claimController.getClaimStatus);
+// Download IAS file API
+router.post('/ias/download', claimController.downloadClaimFileController);
 
 module.exports = router;

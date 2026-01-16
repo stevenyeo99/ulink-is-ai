@@ -9,7 +9,7 @@ const {
   buildIasReimbursementClaimPayload,
 } = require('../services/claimService');
 const { saveProviderClaimWorkbook } = require('../services/excelService');
-const { postMemberInfoByPolicy, postClaimSubmission, postClaimStatus } = require('../services/iasService');
+const { postMemberInfoByPolicy, postClaimSubmission, postClaimStatus, downloadClaimFile } = require('../services/iasService');
 const createDebug = require('debug');
 const os = require('os');
 const path = require('path');
@@ -301,6 +301,37 @@ async function getClaimStatus(req, res) {
   }
 }
 
+async function downloadClaimFileController(req, res) {
+  const payload = req.body || {};
+  const { filepath, filename } = payload;
+  let { download_path: downloadPath } = payload;
+
+  if (!filepath || !filename) {
+    return res.status(400).json({
+      error: 'filepath and filename are required',
+    });
+  }
+
+  if (!downloadPath) {
+    const now = new Date();
+    const year = String(now.getFullYear());
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    downloadPath = path.join('/mnt/c/github/ulink/download', year, month, day);
+  }
+
+  try {
+    const data = await downloadClaimFile({ filepath, filename, downloadPath });
+    return res.status(200).json(data);
+  } catch (error) {
+    debug('IAS download error: %s', error.message);
+    return res.status(502).json({
+      error: 'Failed to download IAS file',
+      detail: error.detail || error.message,
+    });
+  }
+}
+
 module.exports = {
   providerClaimJson,
   memberClaimJson,
@@ -313,4 +344,5 @@ module.exports = {
   prepareIasReimbursementClaimPayload,
   submitReimbursementClaim,
   getClaimStatus,
+  downloadClaimFileController,
 };

@@ -1,4 +1,6 @@
 const createDebug = require('debug');
+const fs = require('fs');
+const path = require('path');
 
 const debug = createDebug('app:service:ias');
 
@@ -60,6 +62,7 @@ module.exports = {
   postMemberInfoByPolicy,
   postClaimSubmission,
   postClaimStatus,
+  downloadClaimFile,
 };
 
 async function postClaimSubmission(payload) {
@@ -142,4 +145,37 @@ async function postClaimStatus(payload) {
   }
 
   return data;
+}
+
+async function downloadClaimFile({ filepath, filename, downloadPath }) {
+  if (!filepath || !filename) {
+    throw new Error('filepath and filename are required');
+  }
+
+  const url = buildIasUrl(process.env.CL_DOWNLOAD_FILE_API);
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/octet-stream',
+    },
+    body: JSON.stringify({ filepath, filename }),
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    const err = new Error(`IAS download request failed with status ${response.status}`);
+    err.status = response.status;
+    err.detail = text;
+    throw err;
+  }
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+  await fs.promises.mkdir(downloadPath, { recursive: true });
+  const outputPath = path.join(downloadPath, filename);
+  await fs.promises.writeFile(outputPath, buffer);
+
+  return {
+    path: outputPath,
+    size: buffer.length,
+  };
 }
