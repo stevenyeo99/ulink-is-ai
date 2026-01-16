@@ -151,6 +151,13 @@ async function downloadClaimFile({ filepath, filename, downloadPath }) {
   if (!filepath || !filename) {
     throw new Error('filepath and filename are required');
   }
+  if (!downloadPath) {
+    const now = new Date();
+    const year = String(now.getFullYear());
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    downloadPath = path.join('/mnt/c/github/ulink/download', year, month, day);
+  }
 
   const url = buildIasUrl(process.env.CL_DOWNLOAD_FILE_API);
   const response = await fetch(url, {

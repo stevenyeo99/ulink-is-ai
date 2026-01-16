@@ -41,5 +41,7 @@ router.post('/ias/submit/reimbursement_claim', claimController.submitReimburseme
 router.post('/ias/get_claim_status', claimController.getClaimStatus);
 // Download IAS file API
 router.post('/ias/download', claimController.downloadClaimFileController);
+// Reimbursement Claim End-to-End flow API
+router.post('/ias/reimbursement/claim/process', claimController.processReimbursementClaim);
 
 module.exports = router;
