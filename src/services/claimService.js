@@ -516,9 +516,10 @@ function buildIasReimbursementClaimPayload(prepareClaimApiPayload) {
   const plan = Array.isArray(memberPlans) ? memberPlans[0]?.plan : memberPlans?.plan;
   const meplOid = Array.isArray(memberPlans) ? memberPlans[0]?.MEPL_OID : memberPlans?.MEPL_OID;
   const currency = normalizeCurrency(plan?.SCMA_OID_CCY);
-  const paymentMethod =
+  let paymentMethod =
     prepareClaimApiPayload?.memberInfoData?.payload?.member?.SCMA_OID_CL_PAY_METHOD ||
-    'CL_PAY_METHOD_AT';
+    'AT';
+  paymentMethod = paymentMethod.replace(/^CL_PAYMENT_METHOD/, '');
 
   const incurDate = claimInfo?.incur_date;
   const formattedIncurDate = formatDateToMMddyyyy(incurDate);
@@ -550,11 +551,13 @@ function buildIasReimbursementClaimPayload(prepareClaimApiPayload) {
     BankAcctNo: bankInfo?.account_no ?? null,
     BankAcctName: bankInfo?.account_name ?? null,
     PayeeEmail: policyInfo?.member_email ?? null,
+    ContactNumber: policyInfo?.member_phone_number ?? null,
   }));
 
   return {
     MemberRefNo: memberRefNo,
     isValidation: 'Y',
+    isCSR: 'Y',
     Items: items,
   };
 }
