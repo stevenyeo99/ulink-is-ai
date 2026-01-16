@@ -37,5 +37,7 @@ router.post(
 );
 // Submit Reimbursement Claim API
 router.post('/ias/submit/reimbursement_claim', claimController.submitReimbursementClaim);
+// Claim Status API
+router.post('/ias/get_claim_status', claimController.getClaimStatus);
 
 module.exports = router;
