@@ -257,6 +257,17 @@ function buildFallbackReply({ type, subject, iasResponse, ocrSummary }) {
       ].join('\n'),
     };
   }
+  if (type === 'reimbursement_claim') {
+    return {
+      subject: subject || 'Reimbursement claim processed',
+      body: buildReimbursementClaimTemplate({
+        claimNo: iasResponse?.claimNo,
+        status: iasResponse?.status,
+        approvedAmount: iasResponse?.approvedAmount,
+        processedOn: iasResponse?.processedOn,
+      }),
+    };
+  }
   return {
     subject: subject || 'No action taken',
     body: [
@@ -268,6 +279,39 @@ function buildFallbackReply({ type, subject, iasResponse, ocrSummary }) {
       'ULINK AI Assistant',
     ].join('\n'),
   };
+}
+
+function buildReimbursementClaimTemplate({
+  claimNo,
+  status,
+  statusLines,
+  approvedAmount,
+  processedOn,
+}) {
+  const safeClaimNo = claimNo || 'Not available';
+  const safeStatus = status || 'Not available';
+  const safeApprovedAmount = approvedAmount || 'Not available';
+  const safeProcessedOn = processedOn || 'Not available';
+  const statusBlock =
+    Array.isArray(statusLines) && statusLines.length > 0
+      ? ['Status:', ...statusLines.map((line) => `${line.label}: ${line.status}`)]
+      : [`Status: ${safeStatus}`];
+  return [
+    'Dear,',
+    '',
+    'Your claim has been successfully processed by our system.',
+    'Please find the claim result below, and the CSR document is attached for your reference.',
+    '',
+    'Claim Summary',
+    '',
+    `Claim Number: ${safeClaimNo}`,
+    ...statusBlock,
+    `Approved Amount: ${safeApprovedAmount}`,
+    `Processed On: ${safeProcessedOn}`,
+    '',
+    'Best Regards,',
+    'ULINK AI Assistant',
+  ].join('\n');
 }
 
 async function sendEmail({ to, subject, body, attachments, inReplyTo, references }) {
@@ -408,7 +452,146 @@ async function replyProviderClaim({
   };
 }
 
+function buildReimbursementSummary(claimStatusResponse) {
+  const latest = claimStatusResponse?.payload?.results?.[0] || {};
+  return {
+    status: latest.SCMA_OID_CL_STATUS || null,
+    processedOn: latest.CRT_DATETIME || null,
+  };
+}
+
+function buildReimbursementLineStatus(submissionResponse, fallbackStatus) {
+  const lineResults = submissionResponse?.payload?.lineResults;
+  if (!Array.isArray(lineResults) || lineResults.length === 0) {
+    return { statusText: fallbackStatus || null, statusLines: null };
+  }
+
+  const statusLines = lineResults.map((lineResult, index) => {
+    const lineNo = lineResult?.lineNo ?? lineResult?.line_no ?? index + 1;
+    const status =
+      lineResult?.status ?? lineResult?.lineStatus ?? lineResult?.line_status ?? 'Not available';
+    return {
+      label: `Line ${lineNo ?? index + 1}`,
+      status,
+    };
+  });
+
+  const allApproved = statusLines.every((line) => line.status === 'Approved');
+  if (allApproved) {
+    return { statusText: 'Approved', statusLines: null };
+  }
+
+  return {
+    statusText: statusLines.map((line) => `${line.label}: ${line.status}`).join('\n'),
+    statusLines,
+  };
+}
+
+function formatApprovedAmount(approvedAmount) {
+  if (approvedAmount === null || approvedAmount === undefined || approvedAmount === '') {
+    return null;
+  }
+  const numeric = typeof approvedAmount === 'number' ? approvedAmount : Number(approvedAmount);
+  if (!Number.isFinite(numeric)) {
+    return String(approvedAmount);
+  }
+  return numeric.toLocaleString('en-US');
+}
+
+function formatProcessedOn(processedOn) {
+  if (!processedOn) {
+    return null;
+  }
+  const raw = String(processedOn).trim();
+  const match = raw.match(/^(\d{2})(\d{2})(\d{4})_/);
+  if (!match) {
+    return raw;
+  }
+  const monthIndex = Number(match[1]) - 1;
+  const day = Number(match[2]);
+  const year = Number(match[3]);
+  if (!Number.isFinite(monthIndex) || !Number.isFinite(day) || !Number.isFinite(year)) {
+    return raw;
+  }
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const monthLabel = months[monthIndex];
+  if (!monthLabel) {
+    return raw;
+  }
+  return `${String(day).padStart(2, '0')}-${monthLabel}-${year}`;
+}
+
+async function replyReimbursementClaim({
+  subject,
+  to,
+  claimNo,
+  claimStatusResponse,
+  submissionResponse,
+  downloadedFilePath,
+  inReplyTo,
+  references,
+}) {
+  debug('Reimbursement claim reply queued for %s (subject: %s, claim: %s)', to, subject, claimNo);
+  const summary = buildReimbursementSummary(claimStatusResponse);
+  const statusDetails = buildReimbursementLineStatus(submissionResponse, summary.status);
+  const approvedAmount = formatApprovedAmount(submissionResponse?.payload?.totalApprovedAmt ?? null);
+  const { body, rawResponse } = await buildReplyFromLlm({
+    type: 'reimbursement_claim',
+    subject,
+    claimNo,
+    status: statusDetails.statusText,
+    approvedAmount,
+    processedOn: summary.processedOn,
+  });
+
+  const finalReply = isLikelyGarbled(body)
+    ? buildFallbackReply({
+        type: 'reimbursement_claim',
+        subject,
+        iasResponse: { claimNo, status: summary.status, processedOn: summary.processedOn },
+      })
+    : { subject, body };
+
+  const finalBody = buildReimbursementClaimTemplate({
+    claimNo,
+    status: statusDetails.statusText,
+    statusLines: statusDetails.statusLines,
+    approvedAmount,
+    processedOn: formatProcessedOn(summary.processedOn),
+  });
+
+  const attachments = [];
+  if (downloadedFilePath) {
+    attachments.push({
+      filename: path.basename(downloadedFilePath),
+      path: downloadedFilePath,
+    });
+  }
+
+  const result = await sendEmail({
+    to,
+    subject: subject || 'Reimbursement claim processed',
+    body: finalBody,
+    attachments,
+    inReplyTo,
+    references,
+  });
+
+  return {
+    status: 'sent',
+    subject: subject || null,
+    to,
+    body: finalBody,
+    claimNo,
+    downloadedFilePath,
+    llm_raw_response: rawResponse,
+    messageId: result.messageId || null,
+    fallbackUsed: finalReply.body !== body,
+  };
+}
+
 module.exports = {
   replyNoAction,
   replyProviderClaim,
+  replyReimbursementClaim,
 };

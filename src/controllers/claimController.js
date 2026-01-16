@@ -7,6 +7,7 @@ const {
   formatDateToYYYYMMDD,
   buildIasReimbursementBenefitSetPayload,
   buildIasReimbursementClaimPayload,
+  processReimbursementClaimFromPaths,
 } = require('../services/claimService');
 const { saveProviderClaimWorkbook } = require('../services/excelService');
 const {
@@ -20,25 +21,6 @@ const os = require('os');
 const path = require('path');
 
 const debug = createDebug('app:controller:claim');
-
-function findFirstFileEntry(value) {
-  if (!value || typeof value !== 'object') {
-    return null;
-  }
-
-  const results = value?.payload?.results;
-  if (Array.isArray(results)) {
-    for (const entry of results) {
-      const filename = entry?.FILENAME || entry?.filename || '';
-      const filepath = entry?.PATH || entry?.path || '';
-      if (filename && filepath) {
-        return { filename, filepath };
-      }
-    }
-  }
-
-  return null;
-}
 
 async function providerClaimJson(req, res) {
   const { paths } = req.body || {};
@@ -364,74 +346,12 @@ async function processReimbursementClaim(req, res) {
   }
 
   try {
-    const llmOcrPayload = await processMemberClaim(paths);
-    const memberNrc = llmOcrPayload?.policy_info?.member_nrc;
-    const incurDate = llmOcrPayload?.claim_info?.incur_date;
-
-    if (!memberNrc || !incurDate) {
-      return res.status(400).json({
-        error: 'policy_info.member_nrc and claim_info.incur_date are required',
-      });
-    }
-
-    const meplEffDate = formatDateToYYYYMMDD(incurDate);
-    if (!meplEffDate) {
-      return res.status(400).json({
-        error: 'claim_info.incur_date must be a valid date',
-      });
-    }
-
-    const memberInfoData = await postMemberInfoByPolicy({ memberNrc, meplEffDate });
-    const prepareBenefitSetPayload = buildIasReimbursementBenefitSetPayload(
-      llmOcrPayload,
-      memberInfoData
-    );
-    const prepareBenefitSetResult = await prepareIasReimbursementBenefitSet(prepareBenefitSetPayload);
-    const claimSubmissionPayload = buildIasReimbursementClaimPayload({
-      ocrPayload: llmOcrPayload,
-      memberInfoData,
-      prepareBenefitSetResult,
+    const result = await processReimbursementClaimFromPaths(paths, {
+      downloadPath: download_path || null,
     });
-
-    const submissionResponse = await postClaimSubmission(claimSubmissionPayload);
-    const claimNo =
-      submissionResponse?.payload?.claimNo ??
-      submissionResponse?.claimNo ??
-      submissionResponse?.payload?.claim_no ??
-      submissionResponse?.claim_no ??
-      null;
-
-    if (!claimNo) {
-      return res.status(502).json({
-        error: 'Claim submission response missing claimNo',
-        detail: submissionResponse,
-      });
-    }
-
-    const now = new Date();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const year = String(now.getFullYear());
-    const fromDatetime = `${month}${day}${year}_00:00`;
-    const claimStatusResponse = await postClaimStatus({ claimNo, fromDatetime });
-    const fileEntry = findFirstFileEntry(claimStatusResponse);
-
-    if (!fileEntry || !fileEntry.filename || !fileEntry.filepath) {
-      return res.status(502).json({
-        error: 'Claim status response missing filename/path',
-        detail: claimStatusResponse,
-      });
-    }
-
-    const downloadResult = await downloadClaimFile({
-      filepath: fileEntry.filepath,
-      filename: fileEntry.filename,
-      downloadPath: download_path
-    });
-
     return res.status(200).json({
-      claimNo,
-      downloadedFilePath: downloadResult.path,
+      claimNo: result.claimNo,
+      downloadedFilePath: result.downloadedFilePath,
     });
   } catch (error) {
     debug('IAS reimbursement process error: %s', error.message);

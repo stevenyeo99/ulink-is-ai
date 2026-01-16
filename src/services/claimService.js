@@ -6,7 +6,7 @@ const {
   extractStructuredJson,
 } = require('./llmService');
 const { convertFilesToJpeg300ppi, convertFilesToPng300dpi } = require('./imageService');
-const { postMemberInfoByPolicy, postClaimSubmission } = require('./iasService');
+const { postMemberInfoByPolicy, postClaimSubmission, postClaimStatus, downloadClaimFile } = require('./iasService');
 
 async function processProviderClaim(paths) {
   if (!Array.isArray(paths) || paths.length === 0) {
@@ -589,6 +589,99 @@ function buildIasReimbursementClaimPayload(prepareClaimApiPayload) {
   };
 }
 
+function findLatestFileEntry(claimStatusResponse) {
+  const results = claimStatusResponse?.payload?.results;
+  if (!Array.isArray(results)) {
+    return null;
+  }
+  for (const entry of results) {
+    const filename = entry?.FILENAME || entry?.filename || '';
+    const filepath = entry?.PATH || entry?.path || '';
+    if (filename && filepath) {
+      return { filename, filepath };
+    }
+  }
+  return null;
+}
+
+async function processReimbursementClaimFromPaths(paths, options = {}) {
+  if (!Array.isArray(paths) || paths.length === 0) {
+    throw new Error('paths must be a non-empty array of file paths');
+  }
+
+  const llmOcrPayload = await processMemberClaim(paths);
+  const memberNrc = llmOcrPayload?.policy_info?.member_nrc;
+  const incurDate = llmOcrPayload?.claim_info?.incur_date;
+
+  if (!memberNrc || !incurDate) {
+    const error = new Error('policy_info.member_nrc and claim_info.incur_date are required');
+    error.status = 400;
+    throw error;
+  }
+
+  const meplEffDate = formatDateToYYYYMMDD(incurDate);
+  if (!meplEffDate) {
+    const error = new Error('claim_info.incur_date must be a valid date');
+    error.status = 400;
+    throw error;
+  }
+
+  const memberInfoData = await postMemberInfoByPolicy({ memberNrc, meplEffDate });
+  const prepareBenefitSetPayload = buildIasReimbursementBenefitSetPayload(
+    llmOcrPayload,
+    memberInfoData
+  );
+  const prepareBenefitSetResult = await prepareIasReimbursementBenefitSet(prepareBenefitSetPayload);
+  const claimSubmissionPayload = buildIasReimbursementClaimPayload({
+    ocrPayload: llmOcrPayload,
+    memberInfoData,
+    prepareBenefitSetResult,
+  });
+  const submissionResponse = await postClaimSubmission(claimSubmissionPayload);
+  const claimNo =
+    submissionResponse?.payload?.claimNo ??
+    submissionResponse?.claimNo ??
+    submissionResponse?.payload?.claim_no ??
+    submissionResponse?.claim_no ??
+    null;
+
+  if (!claimNo) {
+    const error = new Error('Claim submission response missing claimNo');
+    error.status = 502;
+    error.detail = submissionResponse;
+    throw error;
+  }
+
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const year = String(now.getFullYear());
+  const fromDatetime = `${month}${day}${year}_00:00`;
+  const claimStatusResponse = await postClaimStatus({ claimNo, fromDatetime });
+  const fileEntry = findLatestFileEntry(claimStatusResponse);
+
+  if (!fileEntry || !fileEntry.filename || !fileEntry.filepath) {
+    const error = new Error('Claim status response missing filename/path');
+    error.status = 502;
+    error.detail = claimStatusResponse;
+    throw error;
+  }
+
+  const downloadResult = await downloadClaimFile({
+    filepath: fileEntry.filepath,
+    filename: fileEntry.filename,
+    downloadPath: options.downloadPath,
+  });
+
+  return {
+    claimNo,
+    downloadedFilePath: downloadResult.path,
+    claimSubmissionPayload,
+    claimStatusResponse,
+    submissionResponse,
+  };
+}
+
 async function submitProviderClaimFromPaths(paths) {
   const providerClaimResult = await processProviderClaim(paths);
   const mainSheet = providerClaimResult?.main_sheet || {};
@@ -620,5 +713,7 @@ module.exports = {
   buildIasProviderClaimPayload,
   buildIasReimbursementBenefitSetPayload,
   buildIasReimbursementClaimPayload,
+  findLatestFileEntry,
+  processReimbursementClaimFromPaths,
   submitProviderClaimFromPaths,
 };

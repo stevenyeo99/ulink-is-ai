@@ -9,7 +9,8 @@ const {
 } = require('./llmService');
 const { submitProviderClaimFromPaths } = require('./claimService');
 const { saveProviderClaimWorkbook } = require('./excelService');
-const { replyNoAction, replyProviderClaim } = require('./emailReplyService');
+const { replyNoAction, replyProviderClaim, replyReimbursementClaim } = require('./emailReplyService');
+const { processReimbursementClaimFromPaths } = require('./claimService');
 
 const debug = createDebug('app:service:email');
 
@@ -192,7 +193,7 @@ const decisionSchema = {
   schema: {
     type: 'object',
     properties: {
-      action: { type: 'string', enum: ['provider_claim', 'no_action'] },
+      action: { type: 'string', enum: ['provider_claim', 'reimbursement_claim', 'no_action'] },
       reason: { type: 'string' },
       confidence: { type: 'number' },
     },
@@ -365,6 +366,46 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
             await fs.promises.writeFile(
               replyPath,
               `${JSON.stringify({ type: 'provider_claim', ...replyResult }, null, 2)}\n`
+            );
+          }
+        } else if (decision.action === 'reimbursement_claim') {
+          if (!storage.supportedAttachmentPaths.length) {
+            throw new Error('No supported PDF/image attachments for reimbursement claim');
+          }
+          const result = await processReimbursementClaimFromPaths(storage.supportedAttachmentPaths);
+          let downloadedFilePath = result.downloadedFilePath;
+          if (storage.outputDir && downloadedFilePath) {
+            const targetPath = path.join(storage.outputDir, path.basename(downloadedFilePath));
+            if (targetPath !== downloadedFilePath) {
+              try {
+                await fs.promises.copyFile(downloadedFilePath, targetPath);
+                downloadedFilePath = targetPath;
+              } catch (error) {
+                debug(
+                  'Failed to copy reimbursement download to email folder (%s): %s',
+                  targetPath,
+                  error.message
+                );
+              }
+            }
+          }
+
+          const replyResult = await replyReimbursementClaim({
+            subject: parsed.subject || envelope.subject || null,
+            to: formatAddressOnlyList(parsed.from?.value),
+            claimNo: result.claimNo,
+            claimStatusResponse: result.claimStatusResponse,
+            submissionResponse: result.submissionResponse,
+            downloadedFilePath,
+            inReplyTo: parsed.messageId || envelope.messageId || null,
+            references: parsed.messageId || envelope.messageId || null,
+          });
+
+          if (storage.outputDir) {
+            const replyPath = path.join(storage.outputDir, 'reply.json');
+            await fs.promises.writeFile(
+              replyPath,
+              `${JSON.stringify({ type: 'reimbursement_claim', ...replyResult }, null, 2)}\n`
             );
           }
         } else {
