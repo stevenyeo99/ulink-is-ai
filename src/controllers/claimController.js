@@ -3,6 +3,7 @@ const {
   processMemberClaim,
   buildIasProviderClaimPayload,
   submitProviderClaimFromPaths,
+  prepareIasReimbursementBenefitSet,
 } = require('../services/claimService');
 const { saveProviderClaimWorkbook } = require('../services/excelService');
 const { postMemberInfoByPolicy, postProviderClaim } = require('../services/iasService');
@@ -173,6 +174,31 @@ async function submitClaimProviderClaim(req, res) {
   }
 }
 
+async function prepareIasReimbursementBenefitSetController(req, res) {
+  const payload = req.body || {};
+  const ocrItems = payload?.ocr?.items;
+  const benefitList = payload?.ias?.benefitList;
+
+  if (!Array.isArray(ocrItems) || ocrItems.length === 0) {
+    return res.status(400).json({ error: 'ocr.items must be a non-empty array' });
+  }
+
+  if (!Array.isArray(benefitList) || benefitList.length === 0) {
+    return res.status(400).json({ error: 'ias.benefitList must be a non-empty array' });
+  }
+
+  try {
+    const items = await prepareIasReimbursementBenefitSet(payload);
+    return res.status(200).json(items);
+  } catch (error) {
+    debug('IAS reimbursement benefit set error: %s', error.message);
+    return res.status(500).json({
+      error: 'Failed to prepare IAS reimbursement benefit set',
+      detail: error.message,
+    });
+  }
+}
+
 module.exports = {
   providerClaimJson,
   memberClaimJson,
@@ -181,4 +207,5 @@ module.exports = {
   prepareIasProviderClaimPayload,
   claimProviderClaim,
   submitClaimProviderClaim,
+  prepareIasReimbursementBenefitSetController,
 };

@@ -24,5 +24,10 @@ router.post('/ias/submit/provider_claim', claimController.submitClaimProviderCla
 
 // get json format for member claim OCR
 router.post('/member_claim/json', claimController.memberClaimJson);
+// Build IAS Reimbursement Benefit Set API
+router.post(
+  '/ias/prepare_ias_reimbursement_benefit_set',
+  claimController.prepareIasReimbursementBenefitSetController
+);
 
 module.exports = router;

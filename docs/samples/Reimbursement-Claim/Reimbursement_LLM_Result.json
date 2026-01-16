@@ -1,0 +1,49 @@
+{
+    "policy_info": {
+        "policy_no": "AYA/YGN/AYH/25000400",
+        "member_name": "Myat Thandar Win",
+        "member_nrc": "8/TATAKA(N)127934",
+        "member_phone_number": "09403246096",
+        "member_email": "thandar824@gmail.com",
+        "channel": "Eclaim"
+    },
+    "claim_info": {
+        "incur_date": "2025-10-18",
+        "received_date": "2025-11-23",
+        "claim_type": "reimbursement",
+        "benefit_type": "outpatient",
+        "diagnosis": "Pruritus",
+        "diagnosis_remark": "Skin disease",
+        "total_claim_amount": "36000"
+    },
+    "bank_info": {
+        "bank_name": "AYA",
+        "account_name": "Myat Thandar Win",
+        "account_no": "40029637300",
+        "bank_address": "0134-Ygn(54)-MPA"
+    },
+    "document_info": {
+        "submitted_documents": [
+            "Medical Record Photos",
+            "Bill Photos"
+        ],
+        "missing_documents": "",
+        "notes": ""
+    },
+    "form_info": {
+        "form_type": "CLAIM NOTIFICATION FORM (NON - MOTOR)",
+        "form_date": "",
+        "received_date": "2025-11-23"
+    },
+    "items": [
+        {
+            "benefit": "OPD Consultant Fees",
+            "amount": "20000"
+        },
+        {
+            "benefit": "OPD Service Fees",
+            "amount": "16000"
+        }
+    ],
+    "extra_fields": []
+}

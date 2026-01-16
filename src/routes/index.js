@@ -11,5 +11,9 @@ router.use('/claim', claimRouter);
 router.use('/email', emailRouter);
 router.post('/provider_claim/json/excel', claimController.providerClaimJsonExcel);
 router.post('/member_claim/json', claimController.memberClaimJson);
+router.post(
+  '/ias/prepare_ias_reimbursement_benefit_set',
+  claimController.prepareIasReimbursementBenefitSetController
+);
 
 module.exports = router;

@@ -1,0 +1,49 @@
+{
+    "ocr": {
+        "benefit_type": "outpatient",
+        "items": [
+            {
+                "benefit": "OPD Consultant Fees",
+                "amount": "20000"
+            },
+            {
+                "benefit": "OPD Service Fees",
+                "amount": "16000"
+            }
+        ]
+    },
+    "ias": {
+        "benefitList": [
+            {
+                "benefit_type_code": "OP",
+                "benefit_type_desc": "Outpatient",
+                "benefit_head_code": "RX",
+                "benefit_head_desc": "Prescribed Medicine"
+            },
+            {
+                "benefit_type_code": "OP",
+                "benefit_type_desc": "Outpatient",
+                "benefit_head_code": "SP",
+                "benefit_head_desc": "Specialist consultation"
+            },
+            {
+                "benefit_type_code": "OP",
+                "benefit_type_desc": "Outpatient",
+                "benefit_head_code": "OV",
+                "benefit_head_desc": "Office Visit"
+            },
+            {
+                "benefit_type_code": "OP",
+                "benefit_type_desc": "Outpatient",
+                "benefit_head_code": "XRAY",
+                "benefit_head_desc": "X-Ray"
+            },
+            {
+                "benefit_type_code": "OP",
+                "benefit_type_desc": "Outpatient",
+                "benefit_head_code": "LAB",
+                "benefit_head_desc": "Laboratory Charges"
+            }
+        ]
+    }
+}
