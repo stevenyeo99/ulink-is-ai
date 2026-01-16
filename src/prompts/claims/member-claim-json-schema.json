@@ -35,7 +35,7 @@
         "total_claim_amount": { "type": "string" },
         "description_of_treatment": { "type": "string" }
       },
-      "required": ["incur_date", "received_date", "incident_date", "claim_type", "benefit_type", "diagnosis", "diagnosis_remark", "total_claim_amount"]
+      "required": ["incur_date", "received_date", "incident_date", "claim_type", "benefit_type", "diagnosis", "diagnosis_remark", "total_claim_amount", "provider_name", "doctor_name"]
     },
     "bank_info": {
       "type": "object",
