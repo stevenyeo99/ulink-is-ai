@@ -15,6 +15,7 @@ const {
   replyNoAction,
   replyProviderClaim,
   replyReimbursementClaim,
+  replySystemError,
 } = require('./emailReplyService');
 const { processReimbursementClaimFromPaths } = require('./claimService');
 
@@ -374,71 +375,68 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
               localProcessed = true;
               return { storage, envelope, processed: localProcessed };
             }
-            let providerClaimResult;
-            let providerClaimPayload;
-            let iasResponse;
             try {
-              ({ providerClaimResult, providerClaimPayload, iasResponse } =
-                await submitProviderClaimFromPaths(storage.supportedAttachmentPaths));
-            } catch (error) {
-              if (error?.code === 'MEMBER_PLAN_NOT_FOUND') {
-                const replyResult = await replyMemberPlanMissing({
-                  subject: parsed.subject || envelope.subject || null,
-                  to: formatAddressOnlyList(parsed.from?.value),
-                  type: 'provider_claim',
-                  inReplyTo: parsed.messageId || envelope.messageId || null,
-                  references: parsed.messageId || envelope.messageId || null,
+              const { providerClaimResult, providerClaimPayload, iasResponse } =
+                await submitProviderClaimFromPaths(storage.supportedAttachmentPaths);
+              let payloadPath = null;
+              let ocrPath = null;
+              let excelPath = null;
+
+              if (storage.outputDir) {
+                ocrPath = path.join(storage.outputDir, 'provider-claim-ocr.json');
+                await fs.promises.writeFile(
+                  ocrPath,
+                  `${JSON.stringify(providerClaimResult, null, 2)}\n`
+                );
+                payloadPath = path.join(storage.outputDir, 'provider-claim-request-payload.json');
+                await fs.promises.writeFile(
+                  payloadPath,
+                  `${JSON.stringify(providerClaimPayload, null, 2)}\n`
+                );
+                excelPath = await saveProviderClaimWorkbook(providerClaimResult, {
+                  dir: storage.outputDir,
+                  filename: 'llm_prompt_document_result.xlsx',
                 });
-                if (storage.outputDir) {
-                  const replyPath = path.join(storage.outputDir, 'reply.json');
-                  await fs.promises.writeFile(
-                    replyPath,
-                    `${JSON.stringify({ type: 'provider_claim_member_plan_missing', ...replyResult }, null, 2)}\n`
-                  );
-                }
-                localProcessed = true;
-                return { storage, envelope, processed: localProcessed };
               }
-              throw error;
-            }
-            let payloadPath = null;
-            let ocrPath = null;
-            let excelPath = null;
 
-            if (storage.outputDir) {
-              ocrPath = path.join(storage.outputDir, 'provider-claim-ocr.json');
-              await fs.promises.writeFile(
-                ocrPath,
-                `${JSON.stringify(providerClaimResult, null, 2)}\n`
-              );
-              payloadPath = path.join(storage.outputDir, 'provider-claim-request-payload.json');
-              await fs.promises.writeFile(
+              const replyResult = await replyProviderClaim({
+                subject: parsed.subject || envelope.subject || null,
+                to: formatAddressOnlyList(parsed.from?.value),
                 payloadPath,
-                `${JSON.stringify(providerClaimPayload, null, 2)}\n`
-              );
-              excelPath = await saveProviderClaimWorkbook(providerClaimResult, {
-                dir: storage.outputDir,
-                filename: 'llm_prompt_document_result.xlsx',
+                ocrPath,
+                excelPath,
+                iasResponse,
+                inReplyTo: parsed.messageId || envelope.messageId || null,
+                references: parsed.messageId || envelope.messageId || null,
               });
-            }
 
-            const replyResult = await replyProviderClaim({
-              subject: parsed.subject || envelope.subject || null,
-              to: formatAddressOnlyList(parsed.from?.value),
-              payloadPath,
-              ocrPath,
-              excelPath,
-              iasResponse,
-              inReplyTo: parsed.messageId || envelope.messageId || null,
-              references: parsed.messageId || envelope.messageId || null,
-            });
-
-            if (storage.outputDir) {
-              const replyPath = path.join(storage.outputDir, 'reply.json');
-              await fs.promises.writeFile(
-                replyPath,
-                `${JSON.stringify({ type: 'provider_claim', ...replyResult }, null, 2)}\n`
-              );
+              if (storage.outputDir) {
+                const replyPath = path.join(storage.outputDir, 'reply.json');
+                await fs.promises.writeFile(
+                  replyPath,
+                  `${JSON.stringify({ type: 'provider_claim', ...replyResult }, null, 2)}\n`
+                );
+              }
+            } catch (error) {
+              const replyFn =
+                error?.code === 'MEMBER_PLAN_NOT_FOUND' ? replyMemberPlanMissing : replySystemError;
+              const replyType = error?.code === 'MEMBER_PLAN_NOT_FOUND' ? 'provider_claim_member_plan_missing' : 'provider_claim_system_error';
+              const replyResult = await replyFn({
+                subject: parsed.subject || envelope.subject || null,
+                to: formatAddressOnlyList(parsed.from?.value),
+                type: 'provider_claim',
+                inReplyTo: parsed.messageId || envelope.messageId || null,
+                references: parsed.messageId || envelope.messageId || null,
+              });
+              if (storage.outputDir) {
+                const replyPath = path.join(storage.outputDir, 'reply.json');
+                await fs.promises.writeFile(
+                  replyPath,
+                  `${JSON.stringify({ type: replyType, ...replyResult }, null, 2)}\n`
+                );
+              }
+              localProcessed = true;
+              return { storage, envelope, processed: localProcessed };
             }
           } else if (decision.action === 'reimbursement_claim') {
             if (!storage.supportedAttachmentPaths.length) {
@@ -459,89 +457,91 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
               localProcessed = true;
               return { storage, envelope, processed: localProcessed };
             }
-            let result;
             try {
-              result = await processReimbursementClaimFromPaths(
+              const result = await processReimbursementClaimFromPaths(
                 storage.supportedAttachmentPaths
               );
-            } catch (error) {
-              if (error?.code === 'MEMBER_PLAN_NOT_FOUND') {
-                const replyResult = await replyMemberPlanMissing({
-                  subject: parsed.subject || envelope.subject || null,
-                  to: formatAddressOnlyList(parsed.from?.value),
-                  type: 'reimbursement_claim',
-                  inReplyTo: parsed.messageId || envelope.messageId || null,
-                  references: parsed.messageId || envelope.messageId || null,
-                });
-                if (storage.outputDir) {
-                  const replyPath = path.join(storage.outputDir, 'reply.json');
+              let downloadedFilePath = result.downloadedFilePath;
+              let ocrPayloadPath = null;
+              let claimPayloadPath = null;
+              if (storage.outputDir && downloadedFilePath) {
+                const targetPath = path.join(storage.outputDir, path.basename(downloadedFilePath));
+                if (targetPath !== downloadedFilePath) {
+                  try {
+                    await fs.promises.copyFile(downloadedFilePath, targetPath);
+                    downloadedFilePath = targetPath;
+                  } catch (error) {
+                    debug(
+                      'Failed to copy reimbursement download to email folder (%s): %s',
+                      targetPath,
+                      error.message
+                    );
+                  }
+                }
+              }
+              if (storage.outputDir) {
+                if (result.llmOcrPayload) {
+                  ocrPayloadPath = path.join(storage.outputDir, 'ocr-json-extract.json');
                   await fs.promises.writeFile(
-                    replyPath,
-                    `${JSON.stringify({ type: 'reimbursement_claim_member_plan_missing', ...replyResult }, null, 2)}\n`
+                    ocrPayloadPath,
+                    `${JSON.stringify(result.llmOcrPayload, null, 2)}\n`
                   );
                 }
-                localProcessed = true;
-                return { storage, envelope, processed: localProcessed };
-              }
-              throw error;
-            }
-            let downloadedFilePath = result.downloadedFilePath;
-            let ocrPayloadPath = null;
-            let claimPayloadPath = null;
-            if (storage.outputDir && downloadedFilePath) {
-              const targetPath = path.join(storage.outputDir, path.basename(downloadedFilePath));
-              if (targetPath !== downloadedFilePath) {
-                try {
-                  await fs.promises.copyFile(downloadedFilePath, targetPath);
-                  downloadedFilePath = targetPath;
-                } catch (error) {
-                  debug(
-                    'Failed to copy reimbursement download to email folder (%s): %s',
-                    targetPath,
-                    error.message
+                if (result.claimSubmissionPayload) {
+                  claimPayloadPath = path.join(
+                    storage.outputDir,
+                    'reimbursement-claim-request-payload.json'
+                  );
+                  await fs.promises.writeFile(
+                    claimPayloadPath,
+                    `${JSON.stringify(result.claimSubmissionPayload, null, 2)}\n`
                   );
                 }
               }
-            }
-            if (storage.outputDir) {
-              if (result.llmOcrPayload) {
-                ocrPayloadPath = path.join(storage.outputDir, 'ocr-json-extract.json');
+
+              const replyResult = await replyReimbursementClaim({
+                subject: parsed.subject || envelope.subject || null,
+                to: formatAddressOnlyList(parsed.from?.value),
+                claimNo: result.claimNo,
+                claimStatusResponse: result.claimStatusResponse,
+                submissionResponse: result.submissionResponse,
+                downloadedFilePath,
+                ocrPayloadPath,
+                claimPayloadPath,
+                inReplyTo: parsed.messageId || envelope.messageId || null,
+                references: parsed.messageId || envelope.messageId || null,
+              });
+
+              if (storage.outputDir) {
+                const replyPath = path.join(storage.outputDir, 'reply.json');
                 await fs.promises.writeFile(
-                  ocrPayloadPath,
-                  `${JSON.stringify(result.llmOcrPayload, null, 2)}\n`
+                  replyPath,
+                  `${JSON.stringify({ type: 'reimbursement_claim', ...replyResult }, null, 2)}\n`
                 );
               }
-              if (result.claimSubmissionPayload) {
-                claimPayloadPath = path.join(
-                  storage.outputDir,
-                  'reimbursement-claim-request-payload.json'
-                );
+            } catch (error) {
+              const replyFn =
+                error?.code === 'MEMBER_PLAN_NOT_FOUND' ? replyMemberPlanMissing : replySystemError;
+              const replyType =
+                error?.code === 'MEMBER_PLAN_NOT_FOUND'
+                  ? 'reimbursement_claim_member_plan_missing'
+                  : 'reimbursement_claim_system_error';
+              const replyResult = await replyFn({
+                subject: parsed.subject || envelope.subject || null,
+                to: formatAddressOnlyList(parsed.from?.value),
+                type: 'reimbursement_claim',
+                inReplyTo: parsed.messageId || envelope.messageId || null,
+                references: parsed.messageId || envelope.messageId || null,
+              });
+              if (storage.outputDir) {
+                const replyPath = path.join(storage.outputDir, 'reply.json');
                 await fs.promises.writeFile(
-                  claimPayloadPath,
-                  `${JSON.stringify(result.claimSubmissionPayload, null, 2)}\n`
+                  replyPath,
+                  `${JSON.stringify({ type: replyType, ...replyResult }, null, 2)}\n`
                 );
               }
-            }
-
-            const replyResult = await replyReimbursementClaim({
-              subject: parsed.subject || envelope.subject || null,
-              to: formatAddressOnlyList(parsed.from?.value),
-              claimNo: result.claimNo,
-              claimStatusResponse: result.claimStatusResponse,
-              submissionResponse: result.submissionResponse,
-              downloadedFilePath,
-              ocrPayloadPath,
-              claimPayloadPath,
-              inReplyTo: parsed.messageId || envelope.messageId || null,
-              references: parsed.messageId || envelope.messageId || null,
-            });
-
-            if (storage.outputDir) {
-              const replyPath = path.join(storage.outputDir, 'reply.json');
-              await fs.promises.writeFile(
-                replyPath,
-                `${JSON.stringify({ type: 'reimbursement_claim', ...replyResult }, null, 2)}\n`
-              );
+              localProcessed = true;
+              return { storage, envelope, processed: localProcessed };
             }
           } else {
             const replyResult = await replyNoAction({

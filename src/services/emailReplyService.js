@@ -415,6 +415,24 @@ function buildMemberPlanMissingBody() {
   ].join('\n');
 }
 
+function buildSystemErrorBody(type) {
+  const label =
+    type === 'provider_claim'
+      ? 'provider claim'
+      : type === 'reimbursement_claim'
+        ? 'reimbursement claim'
+        : 'claim';
+  return [
+    'Hello,',
+    '',
+    `Thanks for your request. We hit a system error while processing this ${label}.`,
+    'Please contact the IT team to check this case.',
+    '',
+    'Best Regards,',
+    'ULINK AI Assistant',
+  ].join('\n');
+}
+
 async function replyMemberPlanMissing({ subject, to, type, inReplyTo, references }) {
   const label =
     type === 'provider_claim'
@@ -436,6 +454,31 @@ async function replyMemberPlanMissing({ subject, to, type, inReplyTo, references
     subject: subject || null,
     to,
     body: buildMemberPlanMissingBody(),
+    messageId: result.messageId || null,
+  };
+}
+
+async function replySystemError({ subject, to, type, inReplyTo, references }) {
+  const label =
+    type === 'provider_claim'
+      ? 'Provider claim'
+      : type === 'reimbursement_claim'
+        ? 'Reimbursement claim'
+        : 'Claim';
+  debug('System-error reply queued for %s (subject: %s, type: %s)', to, subject, type);
+  const result = await sendEmail({
+    to,
+    subject: subject || `${label} system error`,
+    body: buildSystemErrorBody(type),
+    inReplyTo,
+    references,
+  });
+
+  return {
+    status: 'sent',
+    subject: subject || null,
+    to,
+    body: buildSystemErrorBody(type),
     messageId: result.messageId || null,
   };
 }
@@ -684,4 +727,5 @@ module.exports = {
   replyNoAction,
   replyProviderClaim,
   replyReimbursementClaim,
+  replySystemError,
 };
