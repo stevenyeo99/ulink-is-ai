@@ -9,7 +9,12 @@ const {
 } = require('./llmService');
 const { submitProviderClaimFromPaths } = require('./claimService');
 const { saveProviderClaimWorkbook } = require('./excelService');
-const { replyNoAction, replyProviderClaim, replyReimbursementClaim } = require('./emailReplyService');
+const {
+  replyMissingAttachments,
+  replyNoAction,
+  replyProviderClaim,
+  replyReimbursementClaim,
+} = require('./emailReplyService');
 const { processReimbursementClaimFromPaths } = require('./claimService');
 
 const debug = createDebug('app:service:email');
@@ -351,7 +356,22 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
 
           if (decision.action === 'provider_claim') {
             if (!storage.supportedAttachmentPaths.length) {
-              throw new Error('No supported PDF/image attachments for provider claim');
+              const replyResult = await replyMissingAttachments({
+                subject: parsed.subject || envelope.subject || null,
+                to: formatAddressOnlyList(parsed.from?.value),
+                type: 'provider_claim',
+                inReplyTo: parsed.messageId || envelope.messageId || null,
+                references: parsed.messageId || envelope.messageId || null,
+              });
+              if (storage.outputDir) {
+                const replyPath = path.join(storage.outputDir, 'reply.json');
+                await fs.promises.writeFile(
+                  replyPath,
+                  `${JSON.stringify({ type: 'provider_claim_missing_attachments', ...replyResult }, null, 2)}\n`
+                );
+              }
+              localProcessed = true;
+              return { storage, envelope, processed: localProcessed };
             }
             const { providerClaimResult, providerClaimPayload, iasResponse } =
               await submitProviderClaimFromPaths(storage.supportedAttachmentPaths);
@@ -396,7 +416,22 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
             }
           } else if (decision.action === 'reimbursement_claim') {
             if (!storage.supportedAttachmentPaths.length) {
-              throw new Error('No supported PDF/image attachments for reimbursement claim');
+              const replyResult = await replyMissingAttachments({
+                subject: parsed.subject || envelope.subject || null,
+                to: formatAddressOnlyList(parsed.from?.value),
+                type: 'reimbursement_claim',
+                inReplyTo: parsed.messageId || envelope.messageId || null,
+                references: parsed.messageId || envelope.messageId || null,
+              });
+              if (storage.outputDir) {
+                const replyPath = path.join(storage.outputDir, 'reply.json');
+                await fs.promises.writeFile(
+                  replyPath,
+                  `${JSON.stringify({ type: 'reimbursement_claim_missing_attachments', ...replyResult }, null, 2)}\n`
+                );
+              }
+              localProcessed = true;
+              return { storage, envelope, processed: localProcessed };
             }
             const result = await processReimbursementClaimFromPaths(
               storage.supportedAttachmentPaths

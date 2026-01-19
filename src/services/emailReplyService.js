@@ -368,6 +368,41 @@ async function replyNoAction({ subject, to, reason, inReplyTo, references }) {
   };
 }
 
+function buildMissingAttachmentsBody(type) {
+  const label = type === 'provider_claim' ? 'provider claim' : 'reimbursement claim';
+  return [
+    'Hello,',
+    '',
+    `Thanks for your request. We could not find any supported PDF or image attachments to process this ${label}.`,
+    'Please reply with the claim documents as PDF or image attachments so we can continue.',
+    '',
+    'Best Regards,',
+    'ULINK AI Assistant',
+  ].join('\n');
+}
+
+async function replyMissingAttachments({ subject, to, type, inReplyTo, references }) {
+  const label = type === 'provider_claim' ? 'Provider claim' : 'Reimbursement claim';
+  debug('Missing-attachments reply queued for %s (subject: %s, type: %s)', to, subject, type);
+
+  const result = await sendEmail({
+    to,
+    subject: subject || `${label} request missing attachments`,
+    body: buildMissingAttachmentsBody(type),
+    inReplyTo,
+    references,
+  });
+
+  return {
+    status: 'sent',
+    subject: subject || null,
+    to,
+    body: buildMissingAttachmentsBody(type),
+    type,
+    messageId: result.messageId || null,
+  };
+}
+
 function appendIasResponseIfMissing(body, iasResponse) {
   if (!iasResponse) {
     return body;
@@ -607,6 +642,7 @@ async function replyReimbursementClaim({
 }
 
 module.exports = {
+  replyMissingAttachments,
   replyNoAction,
   replyProviderClaim,
   replyReimbursementClaim,
