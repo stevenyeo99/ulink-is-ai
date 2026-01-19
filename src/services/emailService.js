@@ -11,6 +11,7 @@ const { submitProviderClaimFromPaths } = require('./claimService');
 const { saveProviderClaimWorkbook } = require('./excelService');
 const {
   replyMissingAttachments,
+  replyMemberPlanMissing,
   replyNoAction,
   replyProviderClaim,
   replyReimbursementClaim,
@@ -373,8 +374,33 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
               localProcessed = true;
               return { storage, envelope, processed: localProcessed };
             }
-            const { providerClaimResult, providerClaimPayload, iasResponse } =
-              await submitProviderClaimFromPaths(storage.supportedAttachmentPaths);
+            let providerClaimResult;
+            let providerClaimPayload;
+            let iasResponse;
+            try {
+              ({ providerClaimResult, providerClaimPayload, iasResponse } =
+                await submitProviderClaimFromPaths(storage.supportedAttachmentPaths));
+            } catch (error) {
+              if (error?.code === 'MEMBER_PLAN_NOT_FOUND') {
+                const replyResult = await replyMemberPlanMissing({
+                  subject: parsed.subject || envelope.subject || null,
+                  to: formatAddressOnlyList(parsed.from?.value),
+                  type: 'provider_claim',
+                  inReplyTo: parsed.messageId || envelope.messageId || null,
+                  references: parsed.messageId || envelope.messageId || null,
+                });
+                if (storage.outputDir) {
+                  const replyPath = path.join(storage.outputDir, 'reply.json');
+                  await fs.promises.writeFile(
+                    replyPath,
+                    `${JSON.stringify({ type: 'provider_claim_member_plan_missing', ...replyResult }, null, 2)}\n`
+                  );
+                }
+                localProcessed = true;
+                return { storage, envelope, processed: localProcessed };
+              }
+              throw error;
+            }
             let payloadPath = null;
             let ocrPath = null;
             let excelPath = null;
@@ -433,9 +459,32 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
               localProcessed = true;
               return { storage, envelope, processed: localProcessed };
             }
-            const result = await processReimbursementClaimFromPaths(
-              storage.supportedAttachmentPaths
-            );
+            let result;
+            try {
+              result = await processReimbursementClaimFromPaths(
+                storage.supportedAttachmentPaths
+              );
+            } catch (error) {
+              if (error?.code === 'MEMBER_PLAN_NOT_FOUND') {
+                const replyResult = await replyMemberPlanMissing({
+                  subject: parsed.subject || envelope.subject || null,
+                  to: formatAddressOnlyList(parsed.from?.value),
+                  type: 'reimbursement_claim',
+                  inReplyTo: parsed.messageId || envelope.messageId || null,
+                  references: parsed.messageId || envelope.messageId || null,
+                });
+                if (storage.outputDir) {
+                  const replyPath = path.join(storage.outputDir, 'reply.json');
+                  await fs.promises.writeFile(
+                    replyPath,
+                    `${JSON.stringify({ type: 'reimbursement_claim_member_plan_missing', ...replyResult }, null, 2)}\n`
+                  );
+                }
+                localProcessed = true;
+                return { storage, envelope, processed: localProcessed };
+              }
+              throw error;
+            }
             let downloadedFilePath = result.downloadedFilePath;
             let ocrPayloadPath = null;
             let claimPayloadPath = null;

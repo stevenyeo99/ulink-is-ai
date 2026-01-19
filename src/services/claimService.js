@@ -423,8 +423,15 @@ function formatDateToMMddyyyy(value) {
 }
 
 function buildIasProviderClaimPayload(mainSheet, memberInfoData) {
+  const memberRecord = memberInfoData?.payload?.member;
+  const memberPlans = memberInfoData?.payload?.memberPlans;
+  if (!memberRecord || !Array.isArray(memberPlans) || memberPlans.length === 0) {
+    const error = new Error('Member plan record not found');
+    error.code = 'MEMBER_PLAN_NOT_FOUND';
+    throw error;
+  }
   const memberRefNo = memberInfoData?.payload?.member?.MBR_REF_NO || null;
-  const memberPlan = memberInfoData?.payload?.memberPlans?.[0] || {};
+  const memberPlan = memberPlans[0] || {};
   const planCurrency = memberPlan?.plan?.SCMA_OID_CCY || '';
   const normalizedCurrency = planCurrency.replace(/^CCY_/, '');
 
@@ -545,6 +552,13 @@ function normalizeAmount(value) {
 }
 
 function buildIasReimbursementClaimPayload(prepareClaimApiPayload) {
+  const memberRecord = prepareClaimApiPayload?.memberInfoData?.payload?.member;
+  const memberPlans = prepareClaimApiPayload?.memberInfoData?.payload?.memberPlans;
+  if (!memberRecord || !Array.isArray(memberPlans) || memberPlans.length === 0) {
+    const error = new Error('Member plan record not found');
+    error.code = 'MEMBER_PLAN_NOT_FOUND';
+    throw error;
+  }
   const memberRefNo = prepareClaimApiPayload?.memberInfoData?.payload?.member?.MBR_REF_NO ?? null;
   const claimInfo = prepareClaimApiPayload?.ocrPayload?.claim_info || {};
   const bankInfo = prepareClaimApiPayload?.ocrPayload?.bank_info || {};
@@ -552,7 +566,6 @@ function buildIasReimbursementClaimPayload(prepareClaimApiPayload) {
   const benefitResults = Array.isArray(prepareClaimApiPayload?.prepareBenefitSetResult)
     ? prepareClaimApiPayload.prepareBenefitSetResult
     : [];
-  const memberPlans = prepareClaimApiPayload?.memberInfoData?.payload?.memberPlans || [];
   const plan = Array.isArray(memberPlans) ? memberPlans[0]?.plan : memberPlans?.plan;
   const meplOid = Array.isArray(memberPlans) ? memberPlans[0]?.MEPL_OID : memberPlans?.MEPL_OID;
   const currency = normalizeCurrency(plan?.SCMA_OID_CCY);

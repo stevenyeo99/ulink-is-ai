@@ -12,6 +12,7 @@ Your task is to fill only these fields:
 Do NOT modify any other fields.
 
 Output: the same JSON object, updated, and nothing else.
+Output MUST be valid JSON.
 
 ────────────────────────────────────────
 1. VALIDATION SUMMARY (unmatched billed items)

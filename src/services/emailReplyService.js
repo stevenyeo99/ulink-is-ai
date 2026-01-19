@@ -403,6 +403,43 @@ async function replyMissingAttachments({ subject, to, type, inReplyTo, reference
   };
 }
 
+function buildMemberPlanMissingBody() {
+  return [
+    'Hello,',
+    '',
+    'Thanks for your request. The related member plan record on IAS for this claim does not exist.',
+    'Please verify the member details and resend the claim documents.',
+    '',
+    'Best Regards,',
+    'ULINK AI Assistant',
+  ].join('\n');
+}
+
+async function replyMemberPlanMissing({ subject, to, type, inReplyTo, references }) {
+  const label =
+    type === 'provider_claim'
+      ? 'Provider claim'
+      : type === 'reimbursement_claim'
+        ? 'Reimbursement claim'
+        : 'Claim';
+  debug('Member-plan-missing reply queued for %s (subject: %s, type: %s)', to, subject, type);
+  const result = await sendEmail({
+    to,
+    subject: subject || `${label} missing member plan`,
+    body: buildMemberPlanMissingBody(),
+    inReplyTo,
+    references,
+  });
+
+  return {
+    status: 'sent',
+    subject: subject || null,
+    to,
+    body: buildMemberPlanMissingBody(),
+    messageId: result.messageId || null,
+  };
+}
+
 function appendIasResponseIfMissing(body, iasResponse) {
   if (!iasResponse) {
     return body;
@@ -643,6 +680,7 @@ async function replyReimbursementClaim({
 
 module.exports = {
   replyMissingAttachments,
+  replyMemberPlanMissing,
   replyNoAction,
   replyProviderClaim,
   replyReimbursementClaim,
