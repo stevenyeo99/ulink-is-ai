@@ -218,11 +218,33 @@ function extractStructuredJson(llmResponse) {
     throw new Error('LLM response contained no choices');
   }
 
+  const extractFirstJsonObject = (text) => {
+    if (typeof text !== 'string') return text;
+    const start = text.indexOf('{');
+    if (start === -1) return text;
+    let depth = 0;
+    for (let i = start; i < text.length; i += 1) {
+      const char = text[i];
+      if (char === '{') depth += 1;
+      if (char === '}') {
+        depth -= 1;
+        if (depth === 0) {
+          return text.slice(start, i + 1);
+        }
+      }
+    }
+    return text;
+  };
+
   const parseJsonWithRepair = (value) => {
+    const text = typeof value === 'string' ? value.trim() : value;
+    const normalized = extractFirstJsonObject(text);
     try {
-      return JSON.parse(value);
+      return JSON.parse(normalized);
     } catch (error) {
-      const repaired = repairUnescapedQuotes(value);
+      const repaired = repairUnescapedQuotes(normalized);
+      console.log('Error parsing JSON:', error);
+      console.log('Repaired JSON:', repaired);
       return JSON.parse(repaired);
     }
   };

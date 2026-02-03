@@ -111,12 +111,23 @@ FOR VALIDATION-RELATED FIELDS IN THIS PASS:
 A later validation pass will compute and fill these.
 
 - benefit_type:
-  - OP / DT / VS / IP
-- benefit_head:
-  - OV / DENT / EYEE / SPEC / LENS
+  •	OP = Outpatient
+  •	DT = Dental
+  •	VS = Vision
+  •	IP = Inpatient / Day Surgery
+- benefit_head mapping:
+  Type	Head	Condition
+  OP	OV	Standard OP cases
+  DT	DENT	Dental visits
+  VS	EYEE	Eye exam/refraction
+  VS	SPEC	Spectacles/frames
+  VS	LENS	Contact lenses
+  IP	(blank)	Inpatient
+  Priority for VS:
+  SPEC → LENS → EYEE
 
 
-3. document_source_summary
+1. document_source_summary
 
 - patient = normalized name (same as main_sheet.last_first_name).
 - log_file / medical_record_file / invoice_file = "Provided" or "" (without mention file type).
