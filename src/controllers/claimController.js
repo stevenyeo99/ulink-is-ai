@@ -165,9 +165,13 @@ async function submitClaimProviderClaim(req, res) {
   }
 
   try {
-    const { iasResponse } = await submitProviderClaimFromPaths(paths);
+    const { providerClaimResult,
+    providerClaimPayload,
+    iasResponse, } = await submitProviderClaimFromPaths(paths);
     return res.status(200).json({
-      ...iasResponse,
+      providerClaimResult,
+      providerClaimPayload,
+      iasResponse,
     });
   } catch (error) {
     debug('IAS submit provider claim error: %s', error.message);
