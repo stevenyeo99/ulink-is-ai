@@ -134,14 +134,17 @@ A later validation pass will compute and fill these.
 - log_file / medical_record_file / invoice_file:
   Use only "Provided" or "" (do NOT mention file type).
 
-- missing_docs:
-  If ANY of the above file fields is "", list the missing file name(s).
-  If NONE are missing, set "None".
-  NEVER output "None" when any file field is empty.
+- missing_docs (MUST be derived from the 3 fields above):
+  If log_file = "" then missing_docs MUST include "log file".
+  If medical_record_file = "" then missing_docs MUST include "medical record file".
+  If invoice_file = "" then missing_docs MUST include "invoice file".
+  If none are missing, missing_docs = "None".
+  FORBIDDEN: missing_docs = "None" when any file field is "".
 
-- status:
-  If ANY file field is "", set "Incomplete".
-  Only set "Complete Set" when ALL three file fields are "Provided".
+- status (MUST be derived from the 3 fields above):
+  If any file field is "", status MUST be "Incomplete".
+  Otherwise status = "Complete Set".
+  FORBIDDEN: status = "Complete Set" when any file field is "".
 
 
 4. invoice_items — Extract ALL invoice line items

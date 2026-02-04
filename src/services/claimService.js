@@ -716,7 +716,11 @@ async function submitProviderClaimFromPaths(paths) {
   console.log('Provider Claim OCR Result:', providerClaimResult);
   const documentSourceSummary = providerClaimResult?.document_source_summary || {};
   const documentStatus = String(documentSourceSummary.status || '').trim().toLowerCase();
-  const isCompleted = documentStatus.includes('complete');
+  const isCompleted =
+    /\bcomplete\b/.test(documentStatus) && !/\bincomplete\b/.test(documentStatus);
+
+  console.log('Document Status:', documentStatus, 'Is Completed:', isCompleted);
+  
   if (!isCompleted) {
     const missingDocs = documentSourceSummary.missing_docs || 'Not available';
     const error = new Error(
