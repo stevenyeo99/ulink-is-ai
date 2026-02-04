@@ -381,6 +381,21 @@ function buildMissingAttachmentsBody(type) {
   ].join('\n');
 }
 
+function buildMissingDocumentsBody({ type, missingDocs }) {
+  const label = type === 'provider_claim' ? 'provider claim' : 'claim';
+  const missingText = missingDocs || 'Not available';
+  return [
+    'Hello,',
+    '',
+    `Thanks for your request. We could not complete this ${label} because some required documents are missing.`,
+    `System Validation: ${missingText}`,
+    'Please re-upload all documents again (LOG, Medical Record, and Invoice/Bill) so we can continue.',
+    '',
+    'Best Regards,',
+    'ULINK AI Assistant',
+  ].join('\n');
+}
+
 async function replyMissingAttachments({ subject, to, type, inReplyTo, references }) {
   const label = type === 'provider_claim' ? 'Provider claim' : 'Reimbursement claim';
   debug('Missing-attachments reply queued for %s (subject: %s, type: %s)', to, subject, type);
@@ -399,6 +414,37 @@ async function replyMissingAttachments({ subject, to, type, inReplyTo, reference
     to,
     body: buildMissingAttachmentsBody(type),
     type,
+    messageId: result.messageId || null,
+  };
+}
+
+async function replyMissingDocuments({
+  subject,
+  to,
+  type,
+  missingDocs,
+  inReplyTo,
+  references,
+}) {
+  const label = type === 'provider_claim' ? 'Provider claim' : 'Claim';
+  debug('Missing-documents reply queued for %s (subject: %s, type: %s)', to, subject, type);
+
+  const body = buildMissingDocumentsBody({ type, missingDocs });
+  const result = await sendEmail({
+    to,
+    subject: subject || `${label} request missing documents`,
+    body,
+    inReplyTo,
+    references,
+  });
+
+  return {
+    status: 'sent',
+    subject: subject || null,
+    to,
+    body,
+    type,
+    missingDocs: missingDocs || null,
     messageId: result.messageId || null,
   };
 }
@@ -723,6 +769,7 @@ async function replyReimbursementClaim({
 
 module.exports = {
   replyMissingAttachments,
+  replyMissingDocuments,
   replyMemberPlanMissing,
   replyNoAction,
   replyProviderClaim,

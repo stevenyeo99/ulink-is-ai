@@ -11,6 +11,7 @@ const { submitProviderClaimFromPaths } = require('./claimService');
 const { saveProviderClaimWorkbook } = require('./excelService');
 const {
   replyMissingAttachments,
+  replyMissingDocuments,
   replyMemberPlanMissing,
   replyNoAction,
   replyProviderClaim,
@@ -418,13 +419,22 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
                 );
               }
             } catch (error) {
-              const replyFn =
-                error?.code === 'MEMBER_PLAN_NOT_FOUND' ? replyMemberPlanMissing : replySystemError;
-              const replyType = error?.code === 'MEMBER_PLAN_NOT_FOUND' ? 'provider_claim_member_plan_missing' : 'provider_claim_system_error';
+              let replyFn = replySystemError;
+              let replyType = 'provider_claim_system_error';
+              const missingDocs = error?.detail?.missing_docs || null;
+
+              if (error?.code === 'MEMBER_PLAN_NOT_FOUND') {
+                replyFn = replyMemberPlanMissing;
+                replyType = 'provider_claim_member_plan_missing';
+              } else if (error?.code === 'MISSING_DOCUMENTS') {
+                replyFn = replyMissingDocuments;
+                replyType = 'provider_claim_missing_documents';
+              }
               const replyResult = await replyFn({
                 subject: parsed.subject || envelope.subject || null,
                 to: formatAddressOnlyList(parsed.from?.value),
                 type: 'provider_claim',
+                missingDocs,
                 inReplyTo: parsed.messageId || envelope.messageId || null,
                 references: parsed.messageId || envelope.messageId || null,
               });

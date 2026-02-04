@@ -130,9 +130,18 @@ A later validation pass will compute and fill these.
 1. document_source_summary
 
 - patient = normalized name (same as main_sheet.last_first_name).
-- log_file / medical_record_file / invoice_file = "Provided" or "" (without mention file type).
-- missing_docs = "None" or short text listing missing docs.
-- status = "Complete Set" or "Incomplete".
+
+- log_file / medical_record_file / invoice_file:
+  Use only "Provided" or "" (do NOT mention file type).
+
+- missing_docs:
+  If ANY of the above file fields is "", list the missing file name(s).
+  If NONE are missing, set "None".
+  NEVER output "None" when any file field is empty.
+
+- status:
+  If ANY file field is "", set "Incomplete".
+  Only set "Complete Set" when ALL three file fields are "Provided".
 
 
 4. invoice_items — Extract ALL invoice line items

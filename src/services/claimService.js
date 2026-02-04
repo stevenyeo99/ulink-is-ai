@@ -714,6 +714,22 @@ async function submitProviderClaimFromPaths(paths) {
   const providerClaimResult = await processProviderClaim(paths);
 
   console.log('Provider Claim OCR Result:', providerClaimResult);
+  const documentSourceSummary = providerClaimResult?.document_source_summary || {};
+  const documentStatus = String(documentSourceSummary.status || '').trim().toLowerCase();
+  const isCompleted = documentStatus.includes('complete');
+  if (!isCompleted) {
+    const missingDocs = documentSourceSummary.missing_docs || 'Not available';
+    const error = new Error(
+      `Provider claim documents incomplete. Missing docs: ${missingDocs}`
+    );
+    error.status = 400;
+    error.detail = {
+      status: documentSourceSummary.status || null,
+      missing_docs: documentSourceSummary.missing_docs || null,
+    };
+    error.code = 'MISSING_DOCUMENTS';
+    throw error;
+  }
   const mainSheet = providerClaimResult?.main_sheet || {};
   const memberNrc = mainSheet.policy_no;
   const meplEffDate = mainSheet.incur_date_from;
