@@ -175,14 +175,17 @@ async function submitClaimProviderClaim(req, res) {
     });
   } catch (error) {
     debug('IAS submit provider claim error: %s', error.message);
+    const errorCode = error?.code || 'SYSTEM_ERROR';
     if (error.status === 400) {
       return res.status(400).json({
         error: error.message,
+        error_code: errorCode,
       });
     }
     return res.status(502).json({
       error: 'Failed to submit IAS provider claim',
       detail: error.detail || error.message,
+      error_code: errorCode,
     });
   }
 }
