@@ -1,0 +1,141 @@
+{
+    "main_sheet": {
+        "insurer": "Ulink Assist Myanmar",
+        "policy_no": "G041/2024/08/80",
+        "last_first_name": "KHIN MIE MIE AUNG",
+        "diagnosis_code": "",
+        "diagnosis_description": "Rabies Vaccine Injection (Fourth Dose) for Dog Bite",
+        "provider_name": "Aryu International Hospital",
+        "provider_code": "",
+        "incur_date_from": "19-11-2024",
+        "incur_date_to": "19-11-2024",
+        "presented_currency": "MMK",
+        "presented_amount": "126000",
+        "non_covered_amount": "0",
+        "non_covered_remark": "Nil – no non-covered items detected.",
+        "final_payable_amount": "126000",
+        "benefit_type": "OP",
+        "benefit_head": "OV",
+        "data_consistency_check_name_date_match": "Matched",
+        "claim_document_consistency_check": "Complete Set",
+        "prescription_test_validation_result": "Unjustified billed items found",
+        "validation_notes": "Items billed but not prescribed: Nursing Service for ER, SYRINGE 3CC ( NIPRO ), Intramucular injection, PACK NEEDLE 18G, EXAM GLOVE PF (M), Hospital Service Charges, Documentation Fee, Nursing Fee IPD/ OPD/ Day Care",
+        "dx_treatment_consistency_result": "",
+        "dx_treatment_notes": ""
+    },
+    "document_source_summary": {
+        "patient": "KHIN MIE MIE AUNG",
+        "log_file": "LOG present",
+        "medical_record_file": "Medical Record present",
+        "invoice_file": "Invoice present",
+        "missing_docs": "None",
+        "status": "Complete Set"
+    },
+    "invoice_items": [
+        {
+            "description": "Nursing Service for ER",
+            "amount": "8000"
+        },
+        {
+            "description": "SYRINGE 3CC ( NIPRO )",
+            "amount": "1050"
+        },
+        {
+            "description": "Intramucular injection",
+            "amount": "4500"
+        },
+        {
+            "description": "PACK NEEDLE 18G",
+            "amount": "550"
+        },
+        {
+            "description": "EXAM GLOVE PF (M)",
+            "amount": "1900"
+        },
+        {
+            "description": "ABHAYRAB (RABIES VACCINE)",
+            "amount": "80000"
+        },
+        {
+            "description": "Hospital Service Charges",
+            "amount": "11000"
+        },
+        {
+            "description": "Documentation Fee",
+            "amount": "10000"
+        },
+        {
+            "description": "Nursing Fee IPD/ OPD/ Day Care",
+            "amount": "9000"
+        }
+    ],
+    "medical_items": [
+        "ABHAYRAB (RABIES VACCINE)"
+    ],
+    "validation_summary": [
+        {
+            "patient": "KHIN MIE MIE AUNG",
+            "item": "Nursing Service for ER",
+            "prescribed_tested": "Not prescribed",
+            "validation_result": "Unjustified",
+            "dx_treatment_consistency": "Appropriate",
+            "notes": "Billed but not prescribed"
+        },
+        {
+            "patient": "KHIN MIE MIE AUNG",
+            "item": "SYRINGE 3CC ( NIPRO )",
+            "prescribed_tested": "Not prescribed",
+            "validation_result": "Unjustified",
+            "dx_treatment_consistency": "Appropriate",
+            "notes": "Billed but not prescribed"
+        },
+        {
+            "patient": "KHIN MIE MIE AUNG",
+            "item": "Intramucular injection",
+            "prescribed_tested": "Not prescribed",
+            "validation_result": "Unjustified",
+            "dx_treatment_consistency": "Appropriate",
+            "notes": "Billed but not prescribed"
+        },
+        {
+            "patient": "KHIN MIE MIE AUNG",
+            "item": "PACK NEEDLE 18G",
+            "prescribed_tested": "Not prescribed",
+            "validation_result": "Unjustified",
+            "dx_treatment_consistency": "Appropriate",
+            "notes": "Billed but not prescribed"
+        },
+        {
+            "patient": "KHIN MIE MIE AUNG",
+            "item": "EXAM GLOVE PF (M)",
+            "prescribed_tested": "Not prescribed",
+            "validation_result": "Unjustified",
+            "dx_treatment_consistency": "Appropriate",
+            "notes": "Billed but not prescribed"
+        },
+        {
+            "patient": "KHIN MIE MIE AUNG",
+            "item": "Hospital Service Charges",
+            "prescribed_tested": "Not prescribed",
+            "validation_result": "Unjustified",
+            "dx_treatment_consistency": "Appropriate",
+            "notes": "Billed but not prescribed"
+        },
+        {
+            "patient": "KHIN MIE MIE AUNG",
+            "item": "Documentation Fee",
+            "prescribed_tested": "Not prescribed",
+            "validation_result": "Unjustified",
+            "dx_treatment_consistency": "Appropriate",
+            "notes": "Billed but not prescribed"
+        },
+        {
+            "patient": "KHIN MIE MIE AUNG",
+            "item": "Nursing Fee IPD/ OPD/ Day Care",
+            "prescribed_tested": "Not prescribed",
+            "validation_result": "Unjustified",
+            "dx_treatment_consistency": "Appropriate",
+            "notes": "Billed but not prescribed"
+        }
+    ]
+}

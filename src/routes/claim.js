@@ -5,6 +5,8 @@ const router = express.Router();
 
 // get json format like ULINK GPT Excel
 router.post('/provider_claim/json', claimController.providerClaimJson);
+// get benefit set selection from provider claim documents
+router.post('/provider_claim/benefit_set/json', claimController.providerClaimBenefitSetJson);
 // get excel format from provider claim json
 router.post('/provider_claim/json/excel', claimController.providerClaimJsonExcel);
 // Get Member Info API
@@ -30,6 +32,8 @@ router.post(
   '/ias/prepare_ias_reimbursement_benefit_set',
   claimController.prepareIasReimbursementBenefitSetController
 );
+// Get IAS Benefit List from coverage limits
+router.post('/ias/get_benefit_list', claimController.getIasBenefitList);
 // Build IAS Reimbursement Claim Payload API
 router.post(
   '/ias/prepare_ias_reimbursement_claim_payload',

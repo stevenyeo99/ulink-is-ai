@@ -1,0 +1,976 @@
+{
+    "coverageLimits": [
+        {
+            "limit_type_code": "CH",
+            "limit_type_desc": "Combine Head",
+            "benefits": [
+                {
+                    "benefit_type_code": "IP",
+                    "benefit_type_desc": "Inpatient",
+                    "benefit_head_code": "OPRT",
+                    "benefit_head_desc": "Operating Theatre Fee"
+                },
+                {
+                    "benefit_type_code": "IP",
+                    "benefit_type_desc": "Inpatient",
+                    "benefit_head_code": "SF",
+                    "benefit_head_desc": "SURGICAL FEE"
+                },
+                {
+                    "benefit_type_code": "OP",
+                    "benefit_type_desc": "Outpatient",
+                    "benefit_head_code": "OPKD",
+                    "benefit_head_desc": "Outpatient Kidney dialysis"
+                },
+                {
+                    "benefit_type_code": "OP",
+                    "benefit_type_desc": "Outpatient",
+                    "benefit_head_code": "ER",
+                    "benefit_head_desc": "Rescue room costs"
+                },
+                {
+                    "benefit_type_code": "OP",
+                    "benefit_type_desc": "Outpatient",
+                    "benefit_head_code": "OPCA",
+                    "benefit_head_desc": "Outpatient cancer treatment"
+                },
+                {
+                    "benefit_type_code": "IP",
+                    "benefit_type_desc": "Inpatient",
+                    "benefit_head_code": "RB",
+                    "benefit_head_desc": "Room & Board"
+                },
+                {
+                    "benefit_type_code": "OP",
+                    "benefit_type_desc": "Outpatient",
+                    "benefit_head_code": "DCS",
+                    "benefit_head_desc": "Day Surgery"
+                },
+                {
+                    "benefit_type_code": "HOSP",
+                    "benefit_type_desc": "Pre & Post Hospitalization",
+                    "benefit_head_code": "PDX",
+                    "benefit_head_desc": "Pre-Hospitalization Diagnostic"
+                },
+                {
+                    "benefit_type_code": "HOSP",
+                    "benefit_type_desc": "Pre & Post Hospitalization",
+                    "benefit_head_code": "POST",
+                    "benefit_head_desc": "POST HOSPITAL FOLLOW UP"
+                },
+                {
+                    "benefit_type_code": "IP",
+                    "benefit_type_desc": "Inpatient",
+                    "benefit_head_code": "HVIS",
+                    "benefit_head_desc": "Physician hospital visit"
+                },
+                {
+                    "benefit_type_code": "OP",
+                    "benefit_type_desc": "Outpatient",
+                    "benefit_head_code": "ADEN",
+                    "benefit_head_desc": "Accidental Outpatient Dental Treatment"
+                },
+                {
+                    "benefit_type_code": "IP",
+                    "benefit_type_desc": "Inpatient",
+                    "benefit_head_code": "ICU",
+                    "benefit_head_desc": "Intensive Care Unit"
+                },
+                {
+                    "benefit_type_code": "IP",
+                    "benefit_type_desc": "Inpatient",
+                    "benefit_head_code": "MISC",
+                    "benefit_head_desc": "Miscellaneous Charges - covered"
+                },
+                {
+                    "benefit_type_code": "IP",
+                    "benefit_type_desc": "Inpatient",
+                    "benefit_head_code": "ANES",
+                    "benefit_head_desc": "Anesthetist"
+                },
+                {
+                    "benefit_type_code": "IP",
+                    "benefit_type_desc": "Inpatient",
+                    "benefit_head_code": "SUPP",
+                    "benefit_head_desc": "Supplies"
+                }
+            ],
+            "vis_yr": 0,
+            "vis_day": 0,
+            "amt_vis": null,
+            "amt_yr": 35000000,
+            "amt_dis_yr": null,
+            "amt_life": 350000000,
+            "amt_dis_life": null,
+            "deduct_amt": null,
+            "copay_pct": null,
+            "day_dis_yr": 0,
+            "amt_day": null,
+            "amt_sur": null,
+            "nsur_year": 0,
+            "deduct_amt_day": null,
+            "deduct_amt_vis": null,
+            "day_yr": 0,
+            "amt_pocy": null,
+            "chronic_ongoing_amt": null,
+            "chronic_ongoing_amt_renew": null,
+            "copay_amt_yr": null
+        },
+        {
+            "limit_type_code": "H",
+            "limit_type_desc": "Benefit Head",
+            "benefits": [
+                {
+                    "benefit_type_code": "IP",
+                    "benefit_type_desc": "Inpatient",
+                    "benefit_head_code": "MISC",
+                    "benefit_head_desc": "Miscellaneous Charges - covered"
+                }
+            ],
+            "vis_yr": 0,
+            "vis_day": 0,
+            "amt_vis": null,
+            "amt_yr": 35000000,
+            "amt_dis_yr": null,
+            "amt_life": 350000000,
+            "amt_dis_life": null,
+            "deduct_amt": null,
+            "copay_pct": null,
+            "day_dis_yr": 0,
+            "amt_day": null,
+            "amt_sur": null,
+            "nsur_year": 0,
+            "deduct_amt_day": null,
+            "deduct_amt_vis": null,
+            "day_yr": 0,
+            "amt_pocy": null,
+            "chronic_ongoing_amt": null,
+            "chronic_ongoing_amt_renew": null,
+            "copay_amt_yr": null
+        },
+        {
+            "limit_type_code": "H",
+            "limit_type_desc": "Benefit Head",
+            "benefits": [
+                {
+                    "benefit_type_code": "IP",
+                    "benefit_type_desc": "Inpatient",
+                    "benefit_head_code": "ANES",
+                    "benefit_head_desc": "Anesthetist"
+                }
+            ],
+            "vis_yr": 0,
+            "vis_day": 0,
+            "amt_vis": null,
+            "amt_yr": 35000000,
+            "amt_dis_yr": null,
+            "amt_life": 350000000,
+            "amt_dis_life": null,
+            "deduct_amt": null,
+            "copay_pct": null,
+            "day_dis_yr": 0,
+            "amt_day": null,
+            "amt_sur": null,
+            "nsur_year": 0,
+            "deduct_amt_day": null,
+            "deduct_amt_vis": null,
+            "day_yr": 0,
+            "amt_pocy": null,
+            "chronic_ongoing_amt": null,
+            "chronic_ongoing_amt_renew": null,
+            "copay_amt_yr": null
+        },
+        {
+            "limit_type_code": "H",
+            "limit_type_desc": "Benefit Head",
+            "benefits": [
+                {
+                    "benefit_type_code": "OPAO",
+                    "benefit_type_desc": "Add-on Benefit",
+                    "benefit_head_code": "SCOR",
+                    "benefit_head_desc": "SP"
+                }
+            ],
+            "vis_yr": 0,
+            "vis_day": 0,
+            "amt_vis": 100000,
+            "amt_yr": null,
+            "amt_dis_yr": null,
+            "amt_life": null,
+            "amt_dis_life": null,
+            "deduct_amt": null,
+            "copay_pct": null,
+            "day_dis_yr": 0,
+            "amt_day": null,
+            "amt_sur": null,
+            "nsur_year": 0,
+            "deduct_amt_day": null,
+            "deduct_amt_vis": null,
+            "day_yr": 0,
+            "amt_pocy": null,
+            "chronic_ongoing_amt": null,
+            "chronic_ongoing_amt_renew": null,
+            "copay_amt_yr": null
+        },
+        {
+            "limit_type_code": "H",
+            "limit_type_desc": "Benefit Head",
+            "benefits": [
+                {
+                    "benefit_type_code": "IP",
+                    "benefit_type_desc": "Inpatient",
+                    "benefit_head_code": "OPRT",
+                    "benefit_head_desc": "Operating Theatre Fee"
+                }
+            ],
+            "vis_yr": 0,
+            "vis_day": 0,
+            "amt_vis": null,
+            "amt_yr": 35000000,
+            "amt_dis_yr": null,
+            "amt_life": 350000000,
+            "amt_dis_life": null,
+            "deduct_amt": null,
+            "copay_pct": null,
+            "day_dis_yr": 0,
+            "amt_day": null,
+            "amt_sur": null,
+            "nsur_year": 0,
+            "deduct_amt_day": null,
+            "deduct_amt_vis": null,
+            "day_yr": 0,
+            "amt_pocy": null,
+            "chronic_ongoing_amt": null,
+            "chronic_ongoing_amt_renew": null,
+            "copay_amt_yr": null
+        },
+        {
+            "limit_type_code": "T",
+            "limit_type_desc": "Benefit Type",
+            "benefits": [
+                {
+                    "benefit_type_code": "HOSP",
+                    "benefit_type_desc": "Pre & Post Hospitalization",
+                    "benefit_head_code": null,
+                    "benefit_head_desc": null
+                }
+            ],
+            "vis_yr": 0,
+            "vis_day": 0,
+            "amt_vis": null,
+            "amt_yr": 35000000,
+            "amt_dis_yr": null,
+            "amt_life": 350000000,
+            "amt_dis_life": null,
+            "deduct_amt": null,
+            "copay_pct": null,
+            "day_dis_yr": 0,
+            "amt_day": null,
+            "amt_sur": null,
+            "nsur_year": 0,
+            "deduct_amt_day": null,
+            "deduct_amt_vis": null,
+            "day_yr": 0,
+            "amt_pocy": null,
+            "chronic_ongoing_amt": null,
+            "chronic_ongoing_amt_renew": null,
+            "copay_amt_yr": null
+        },
+        {
+            "limit_type_code": "H",
+            "limit_type_desc": "Benefit Head",
+            "benefits": [
+                {
+                    "benefit_type_code": "OPAO",
+                    "benefit_type_desc": "Add-on Benefit",
+                    "benefit_head_code": "XLAB",
+                    "benefit_head_desc": "Diagnostics/Lab"
+                }
+            ],
+            "vis_yr": 0,
+            "vis_day": 0,
+            "amt_vis": 180000,
+            "amt_yr": null,
+            "amt_dis_yr": null,
+            "amt_life": null,
+            "amt_dis_life": null,
+            "deduct_amt": null,
+            "copay_pct": null,
+            "day_dis_yr": 0,
+            "amt_day": null,
+            "amt_sur": null,
+            "nsur_year": 0,
+            "deduct_amt_day": null,
+            "deduct_amt_vis": null,
+            "day_yr": 0,
+            "amt_pocy": null,
+            "chronic_ongoing_amt": null,
+            "chronic_ongoing_amt_renew": null,
+            "copay_amt_yr": null
+        },
+        {
+            "limit_type_code": "T",
+            "limit_type_desc": "Benefit Type",
+            "benefits": [
+                {
+                    "benefit_type_code": "OP",
+                    "benefit_type_desc": "Outpatient",
+                    "benefit_head_code": null,
+                    "benefit_head_desc": null
+                }
+            ],
+            "vis_yr": 0,
+            "vis_day": 0,
+            "amt_vis": null,
+            "amt_yr": 35000000,
+            "amt_dis_yr": null,
+            "amt_life": 350000000,
+            "amt_dis_life": null,
+            "deduct_amt": null,
+            "copay_pct": null,
+            "day_dis_yr": 0,
+            "amt_day": null,
+            "amt_sur": null,
+            "nsur_year": 0,
+            "deduct_amt_day": null,
+            "deduct_amt_vis": null,
+            "day_yr": 0,
+            "amt_pocy": null,
+            "chronic_ongoing_amt": null,
+            "chronic_ongoing_amt_renew": null,
+            "copay_amt_yr": null
+        },
+        {
+            "limit_type_code": "H",
+            "limit_type_desc": "Benefit Head",
+            "benefits": [
+                {
+                    "benefit_type_code": "OP",
+                    "benefit_type_desc": "Outpatient",
+                    "benefit_head_code": "OPCA",
+                    "benefit_head_desc": "Outpatient cancer treatment"
+                }
+            ],
+            "vis_yr": 0,
+            "vis_day": 0,
+            "amt_vis": null,
+            "amt_yr": 35000000,
+            "amt_dis_yr": null,
+            "amt_life": 350000000,
+            "amt_dis_life": null,
+            "deduct_amt": null,
+            "copay_pct": null,
+            "day_dis_yr": 0,
+            "amt_day": null,
+            "amt_sur": null,
+            "nsur_year": 0,
+            "deduct_amt_day": null,
+            "deduct_amt_vis": null,
+            "day_yr": 0,
+            "amt_pocy": null,
+            "chronic_ongoing_amt": null,
+            "chronic_ongoing_amt_renew": null,
+            "copay_amt_yr": null
+        },
+        {
+            "limit_type_code": "H",
+            "limit_type_desc": "Benefit Head",
+            "benefits": [
+                {
+                    "benefit_type_code": "HOSP",
+                    "benefit_type_desc": "Pre & Post Hospitalization",
+                    "benefit_head_code": "PDX",
+                    "benefit_head_desc": "Pre-Hospitalization Diagnostic"
+                }
+            ],
+            "vis_yr": 0,
+            "vis_day": 0,
+            "amt_vis": null,
+            "amt_yr": 35000000,
+            "amt_dis_yr": null,
+            "amt_life": 350000000,
+            "amt_dis_life": null,
+            "deduct_amt": null,
+            "copay_pct": null,
+            "day_dis_yr": 0,
+            "amt_day": null,
+            "amt_sur": null,
+            "nsur_year": 0,
+            "deduct_amt_day": null,
+            "deduct_amt_vis": null,
+            "day_yr": 0,
+            "amt_pocy": null,
+            "chronic_ongoing_amt": null,
+            "chronic_ongoing_amt_renew": null,
+            "copay_amt_yr": null
+        },
+        {
+            "limit_type_code": "CT",
+            "limit_type_desc": "Combine Type",
+            "benefits": [
+                {
+                    "benefit_type_code": "IP",
+                    "benefit_type_desc": "Inpatient",
+                    "benefit_head_code": null,
+                    "benefit_head_desc": null
+                },
+                {
+                    "benefit_type_code": "OP",
+                    "benefit_type_desc": "Outpatient",
+                    "benefit_head_code": null,
+                    "benefit_head_desc": null
+                },
+                {
+                    "benefit_type_code": "HOSP",
+                    "benefit_type_desc": "Pre & Post Hospitalization",
+                    "benefit_head_code": null,
+                    "benefit_head_desc": null
+                }
+            ],
+            "vis_yr": 0,
+            "vis_day": 0,
+            "amt_vis": null,
+            "amt_yr": 35000000,
+            "amt_dis_yr": null,
+            "amt_life": 350000000,
+            "amt_dis_life": null,
+            "deduct_amt": null,
+            "copay_pct": null,
+            "day_dis_yr": 0,
+            "amt_day": null,
+            "amt_sur": null,
+            "nsur_year": 0,
+            "deduct_amt_day": null,
+            "deduct_amt_vis": null,
+            "day_yr": 0,
+            "amt_pocy": null,
+            "chronic_ongoing_amt": null,
+            "chronic_ongoing_amt_renew": null,
+            "copay_amt_yr": null
+        },
+        {
+            "limit_type_code": "H",
+            "limit_type_desc": "Benefit Head",
+            "benefits": [
+                {
+                    "benefit_type_code": "OPAO",
+                    "benefit_type_desc": "Add-on Benefit",
+                    "benefit_head_code": "CCOR",
+                    "benefit_head_desc": "GP"
+                }
+            ],
+            "vis_yr": 0,
+            "vis_day": 0,
+            "amt_vis": 52000,
+            "amt_yr": null,
+            "amt_dis_yr": null,
+            "amt_life": null,
+            "amt_dis_life": null,
+            "deduct_amt": null,
+            "copay_pct": null,
+            "day_dis_yr": 0,
+            "amt_day": null,
+            "amt_sur": null,
+            "nsur_year": 0,
+            "deduct_amt_day": null,
+            "deduct_amt_vis": null,
+            "day_yr": 0,
+            "amt_pocy": null,
+            "chronic_ongoing_amt": null,
+            "chronic_ongoing_amt_renew": null,
+            "copay_amt_yr": null
+        },
+        {
+            "limit_type_code": "H",
+            "limit_type_desc": "Benefit Head",
+            "benefits": [
+                {
+                    "benefit_type_code": "IP",
+                    "benefit_type_desc": "Inpatient",
+                    "benefit_head_code": "HVIS",
+                    "benefit_head_desc": "Physician hospital visit"
+                }
+            ],
+            "vis_yr": 0,
+            "vis_day": 2,
+            "amt_vis": null,
+            "amt_yr": 35000000,
+            "amt_dis_yr": null,
+            "amt_life": 350000000,
+            "amt_dis_life": null,
+            "deduct_amt": null,
+            "copay_pct": null,
+            "day_dis_yr": 0,
+            "amt_day": null,
+            "amt_sur": null,
+            "nsur_year": 0,
+            "deduct_amt_day": null,
+            "deduct_amt_vis": null,
+            "day_yr": 0,
+            "amt_pocy": null,
+            "chronic_ongoing_amt": null,
+            "chronic_ongoing_amt_renew": null,
+            "copay_amt_yr": null
+        },
+        {
+            "limit_type_code": "CH",
+            "limit_type_desc": "Combine Head",
+            "benefits": [
+                {
+                    "benefit_type_code": "OPAO",
+                    "benefit_type_desc": "Add-on Benefit",
+                    "benefit_head_code": "CCOR",
+                    "benefit_head_desc": "GP"
+                },
+                {
+                    "benefit_type_code": "OPAO",
+                    "benefit_type_desc": "Add-on Benefit",
+                    "benefit_head_code": "SCOR",
+                    "benefit_head_desc": "SP"
+                },
+                {
+                    "benefit_type_code": "OPAO",
+                    "benefit_type_desc": "Add-on Benefit",
+                    "benefit_head_code": "XLAB",
+                    "benefit_head_desc": "Diagnostics/Lab"
+                }
+            ],
+            "vis_yr": 0,
+            "vis_day": 0,
+            "amt_vis": null,
+            "amt_yr": 780000,
+            "amt_dis_yr": null,
+            "amt_life": null,
+            "amt_dis_life": null,
+            "deduct_amt": null,
+            "copay_pct": null,
+            "day_dis_yr": 0,
+            "amt_day": null,
+            "amt_sur": null,
+            "nsur_year": 0,
+            "deduct_amt_day": null,
+            "deduct_amt_vis": null,
+            "day_yr": 0,
+            "amt_pocy": null,
+            "chronic_ongoing_amt": null,
+            "chronic_ongoing_amt_renew": null,
+            "copay_amt_yr": null
+        },
+        {
+            "limit_type_code": "T",
+            "limit_type_desc": "Benefit Type",
+            "benefits": [
+                {
+                    "benefit_type_code": "IP",
+                    "benefit_type_desc": "Inpatient",
+                    "benefit_head_code": null,
+                    "benefit_head_desc": null
+                }
+            ],
+            "vis_yr": 0,
+            "vis_day": 0,
+            "amt_vis": null,
+            "amt_yr": 35000000,
+            "amt_dis_yr": null,
+            "amt_life": 350000000,
+            "amt_dis_life": null,
+            "deduct_amt": null,
+            "copay_pct": null,
+            "day_dis_yr": 0,
+            "amt_day": null,
+            "amt_sur": null,
+            "nsur_year": 0,
+            "deduct_amt_day": null,
+            "deduct_amt_vis": null,
+            "day_yr": 0,
+            "amt_pocy": null,
+            "chronic_ongoing_amt": null,
+            "chronic_ongoing_amt_renew": null,
+            "copay_amt_yr": null
+        },
+        {
+            "limit_type_code": "T",
+            "limit_type_desc": "Benefit Type",
+            "benefits": [
+                {
+                    "benefit_type_code": "OPAO",
+                    "benefit_type_desc": "Add-on Benefit",
+                    "benefit_head_code": null,
+                    "benefit_head_desc": null
+                }
+            ],
+            "vis_yr": 0,
+            "vis_day": 0,
+            "amt_vis": null,
+            "amt_yr": 780000,
+            "amt_dis_yr": null,
+            "amt_life": null,
+            "amt_dis_life": null,
+            "deduct_amt": null,
+            "copay_pct": null,
+            "day_dis_yr": 0,
+            "amt_day": null,
+            "amt_sur": null,
+            "nsur_year": 0,
+            "deduct_amt_day": null,
+            "deduct_amt_vis": null,
+            "day_yr": 0,
+            "amt_pocy": null,
+            "chronic_ongoing_amt": null,
+            "chronic_ongoing_amt_renew": null,
+            "copay_amt_yr": null
+        },
+        {
+            "limit_type_code": "H",
+            "limit_type_desc": "Benefit Head",
+            "benefits": [
+                {
+                    "benefit_type_code": "OP",
+                    "benefit_type_desc": "Outpatient",
+                    "benefit_head_code": "DCS",
+                    "benefit_head_desc": "Day Surgery"
+                }
+            ],
+            "vis_yr": 0,
+            "vis_day": 0,
+            "amt_vis": null,
+            "amt_yr": 35000000,
+            "amt_dis_yr": null,
+            "amt_life": 350000000,
+            "amt_dis_life": null,
+            "deduct_amt": null,
+            "copay_pct": null,
+            "day_dis_yr": 0,
+            "amt_day": null,
+            "amt_sur": null,
+            "nsur_year": 0,
+            "deduct_amt_day": null,
+            "deduct_amt_vis": null,
+            "day_yr": 0,
+            "amt_pocy": null,
+            "chronic_ongoing_amt": null,
+            "chronic_ongoing_amt_renew": null,
+            "copay_amt_yr": null
+        },
+        {
+            "limit_type_code": "T",
+            "limit_type_desc": "Benefit Type",
+            "benefits": [
+                {
+                    "benefit_type_code": "PA",
+                    "benefit_type_desc": "Personal Accident",
+                    "benefit_head_code": null,
+                    "benefit_head_desc": null
+                }
+            ],
+            "vis_yr": 0,
+            "vis_day": 0,
+            "amt_vis": null,
+            "amt_yr": 4000000,
+            "amt_dis_yr": null,
+            "amt_life": null,
+            "amt_dis_life": null,
+            "deduct_amt": null,
+            "copay_pct": null,
+            "day_dis_yr": 0,
+            "amt_day": null,
+            "amt_sur": null,
+            "nsur_year": 0,
+            "deduct_amt_day": null,
+            "deduct_amt_vis": null,
+            "day_yr": 0,
+            "amt_pocy": null,
+            "chronic_ongoing_amt": null,
+            "chronic_ongoing_amt_renew": null,
+            "copay_amt_yr": null
+        },
+        {
+            "limit_type_code": "H",
+            "limit_type_desc": "Benefit Head",
+            "benefits": [
+                {
+                    "benefit_type_code": "IP",
+                    "benefit_type_desc": "Inpatient",
+                    "benefit_head_code": "RB",
+                    "benefit_head_desc": "Room & Board"
+                }
+            ],
+            "vis_yr": 0,
+            "vis_day": 0,
+            "amt_vis": null,
+            "amt_yr": 35000000,
+            "amt_dis_yr": null,
+            "amt_life": 350000000,
+            "amt_dis_life": null,
+            "deduct_amt": null,
+            "copay_pct": null,
+            "day_dis_yr": 0,
+            "amt_day": 100000,
+            "amt_sur": null,
+            "nsur_year": 0,
+            "deduct_amt_day": null,
+            "deduct_amt_vis": null,
+            "day_yr": 60,
+            "amt_pocy": null,
+            "chronic_ongoing_amt": null,
+            "chronic_ongoing_amt_renew": null,
+            "copay_amt_yr": null
+        },
+        {
+            "limit_type_code": "H",
+            "limit_type_desc": "Benefit Head",
+            "benefits": [
+                {
+                    "benefit_type_code": "HOSP",
+                    "benefit_type_desc": "Pre & Post Hospitalization",
+                    "benefit_head_code": "POST",
+                    "benefit_head_desc": "POST HOSPITAL FOLLOW UP"
+                }
+            ],
+            "vis_yr": 0,
+            "vis_day": 0,
+            "amt_vis": null,
+            "amt_yr": 35000000,
+            "amt_dis_yr": null,
+            "amt_life": 350000000,
+            "amt_dis_life": null,
+            "deduct_amt": null,
+            "copay_pct": null,
+            "day_dis_yr": 0,
+            "amt_day": null,
+            "amt_sur": null,
+            "nsur_year": 0,
+            "deduct_amt_day": null,
+            "deduct_amt_vis": null,
+            "day_yr": 0,
+            "amt_pocy": null,
+            "chronic_ongoing_amt": null,
+            "chronic_ongoing_amt_renew": null,
+            "copay_amt_yr": null
+        },
+        {
+            "limit_type_code": "H",
+            "limit_type_desc": "Benefit Head",
+            "benefits": [
+                {
+                    "benefit_type_code": "IP",
+                    "benefit_type_desc": "Inpatient",
+                    "benefit_head_code": "SF",
+                    "benefit_head_desc": "SURGICAL FEE"
+                }
+            ],
+            "vis_yr": 0,
+            "vis_day": 0,
+            "amt_vis": null,
+            "amt_yr": 35000000,
+            "amt_dis_yr": null,
+            "amt_life": 350000000,
+            "amt_dis_life": null,
+            "deduct_amt": null,
+            "copay_pct": null,
+            "day_dis_yr": 0,
+            "amt_day": null,
+            "amt_sur": null,
+            "nsur_year": 0,
+            "deduct_amt_day": null,
+            "deduct_amt_vis": null,
+            "day_yr": 0,
+            "amt_pocy": null,
+            "chronic_ongoing_amt": null,
+            "chronic_ongoing_amt_renew": null,
+            "copay_amt_yr": null
+        },
+        {
+            "limit_type_code": "H",
+            "limit_type_desc": "Benefit Head",
+            "benefits": [
+                {
+                    "benefit_type_code": "OP",
+                    "benefit_type_desc": "Outpatient",
+                    "benefit_head_code": "ADEN",
+                    "benefit_head_desc": "Accidental Outpatient Dental Treatment"
+                }
+            ],
+            "vis_yr": 0,
+            "vis_day": 0,
+            "amt_vis": null,
+            "amt_yr": 35000000,
+            "amt_dis_yr": null,
+            "amt_life": 350000000,
+            "amt_dis_life": null,
+            "deduct_amt": null,
+            "copay_pct": null,
+            "day_dis_yr": 0,
+            "amt_day": null,
+            "amt_sur": null,
+            "nsur_year": 0,
+            "deduct_amt_day": null,
+            "deduct_amt_vis": null,
+            "day_yr": 0,
+            "amt_pocy": null,
+            "chronic_ongoing_amt": null,
+            "chronic_ongoing_amt_renew": null,
+            "copay_amt_yr": null
+        },
+        {
+            "limit_type_code": "H",
+            "limit_type_desc": "Benefit Head",
+            "benefits": [
+                {
+                    "benefit_type_code": "PA",
+                    "benefit_type_desc": "Personal Accident",
+                    "benefit_head_code": "LIFE",
+                    "benefit_head_desc": "Death"
+                }
+            ],
+            "vis_yr": 0,
+            "vis_day": 0,
+            "amt_vis": null,
+            "amt_yr": 4000000,
+            "amt_dis_yr": null,
+            "amt_life": null,
+            "amt_dis_life": null,
+            "deduct_amt": null,
+            "copay_pct": null,
+            "day_dis_yr": 0,
+            "amt_day": null,
+            "amt_sur": null,
+            "nsur_year": 0,
+            "deduct_amt_day": null,
+            "deduct_amt_vis": null,
+            "day_yr": 0,
+            "amt_pocy": null,
+            "chronic_ongoing_amt": null,
+            "chronic_ongoing_amt_renew": null,
+            "copay_amt_yr": null
+        },
+        {
+            "limit_type_code": "H",
+            "limit_type_desc": "Benefit Head",
+            "benefits": [
+                {
+                    "benefit_type_code": "IP",
+                    "benefit_type_desc": "Inpatient",
+                    "benefit_head_code": "ICU",
+                    "benefit_head_desc": "Intensive Care Unit"
+                }
+            ],
+            "vis_yr": 0,
+            "vis_day": 0,
+            "amt_vis": null,
+            "amt_yr": 35000000,
+            "amt_dis_yr": null,
+            "amt_life": 350000000,
+            "amt_dis_life": null,
+            "deduct_amt": null,
+            "copay_pct": null,
+            "day_dis_yr": 0,
+            "amt_day": null,
+            "amt_sur": null,
+            "nsur_year": 0,
+            "deduct_amt_day": null,
+            "deduct_amt_vis": null,
+            "day_yr": 90,
+            "amt_pocy": null,
+            "chronic_ongoing_amt": null,
+            "chronic_ongoing_amt_renew": null,
+            "copay_amt_yr": null
+        },
+        {
+            "limit_type_code": "H",
+            "limit_type_desc": "Benefit Head",
+            "benefits": [
+                {
+                    "benefit_type_code": "OP",
+                    "benefit_type_desc": "Outpatient",
+                    "benefit_head_code": "OPKD",
+                    "benefit_head_desc": "Outpatient Kidney dialysis"
+                }
+            ],
+            "vis_yr": 0,
+            "vis_day": 0,
+            "amt_vis": null,
+            "amt_yr": 35000000,
+            "amt_dis_yr": null,
+            "amt_life": 350000000,
+            "amt_dis_life": null,
+            "deduct_amt": null,
+            "copay_pct": null,
+            "day_dis_yr": 0,
+            "amt_day": null,
+            "amt_sur": null,
+            "nsur_year": 0,
+            "deduct_amt_day": null,
+            "deduct_amt_vis": null,
+            "day_yr": 0,
+            "amt_pocy": null,
+            "chronic_ongoing_amt": null,
+            "chronic_ongoing_amt_renew": null,
+            "copay_amt_yr": null
+        },
+        {
+            "limit_type_code": "H",
+            "limit_type_desc": "Benefit Head",
+            "benefits": [
+                {
+                    "benefit_type_code": "IP",
+                    "benefit_type_desc": "Inpatient",
+                    "benefit_head_code": "SUPP",
+                    "benefit_head_desc": "Supplies"
+                }
+            ],
+            "vis_yr": 0,
+            "vis_day": 0,
+            "amt_vis": null,
+            "amt_yr": 35000000,
+            "amt_dis_yr": null,
+            "amt_life": 350000000,
+            "amt_dis_life": null,
+            "deduct_amt": null,
+            "copay_pct": null,
+            "day_dis_yr": 0,
+            "amt_day": null,
+            "amt_sur": null,
+            "nsur_year": 0,
+            "deduct_amt_day": null,
+            "deduct_amt_vis": null,
+            "day_yr": 0,
+            "amt_pocy": null,
+            "chronic_ongoing_amt": null,
+            "chronic_ongoing_amt_renew": null,
+            "copay_amt_yr": null
+        },
+        {
+            "limit_type_code": "H",
+            "limit_type_desc": "Benefit Head",
+            "benefits": [
+                {
+                    "benefit_type_code": "OP",
+                    "benefit_type_desc": "Outpatient",
+                    "benefit_head_code": "ER",
+                    "benefit_head_desc": "Rescue room costs"
+                }
+            ],
+            "vis_yr": 0,
+            "vis_day": 0,
+            "amt_vis": null,
+            "amt_yr": 35000000,
+            "amt_dis_yr": null,
+            "amt_life": 350000000,
+            "amt_dis_life": null,
+            "deduct_amt": null,
+            "copay_pct": null,
+            "day_dis_yr": 0,
+            "amt_day": null,
+            "amt_sur": null,
+            "nsur_year": 0,
+            "deduct_amt_day": null,
+            "deduct_amt_vis": null,
+            "day_yr": 0,
+            "amt_pocy": null,
+            "chronic_ongoing_amt": null,
+            "chronic_ongoing_amt_renew": null,
+            "copay_amt_yr": null
+        }
+    ]
+}

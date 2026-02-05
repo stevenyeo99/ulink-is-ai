@@ -171,10 +171,11 @@ async function convertPdfToJpegs(inputPath, outputPrefix) {
   for (const fileName of pageFiles) {
     const outputPath = path.join(tempDir, fileName);
     // Re-encode to stamp 300 PPI metadata for downstream OCR hints.
-    await sharp(outputPath)
+    const buffer = await sharp(outputPath)
       .withMetadata({ density: 300 })
       .jpeg({ quality: 90 })
-      .toFile(outputPath);
+      .toBuffer();
+    await fs.promises.writeFile(outputPath, buffer);
 
     const pageMatch = fileName.match(/-(\d+)\.jpg$/);
     conversions.push({

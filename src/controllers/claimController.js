@@ -1,11 +1,13 @@
 const {
   processProviderClaim,
   processMemberClaim,
+  processProviderClaimBenefitSet,
   buildIasProviderClaimPayload,
   submitProviderClaimFromPaths,
   prepareIasReimbursementBenefitSet,
   formatDateToYYYYMMDD,
   buildIasReimbursementBenefitSetPayload,
+  buildIasBenefitListFromCoverageLimits,
   buildIasReimbursementClaimPayload,
   processReimbursementClaimFromPaths,
 } = require('../services/claimService');
@@ -38,6 +40,31 @@ async function providerClaimJson(req, res) {
     debug('Conversion error: %s', error.message);
     return res.status(500).json({
       error: 'Failed to process OCR with LLM',
+      detail: error.message,
+    });
+  }
+}
+
+async function providerClaimBenefitSetJson(req, res) {
+  const { paths } = req.body || {};
+  const benefitList = req.body?.ias?.benefitList || req.body?.benefitList;
+
+  if (!Array.isArray(paths) || paths.length === 0) {
+    return res.status(400).json({ error: 'paths must be a non-empty array of file paths' });
+  }
+  if (!Array.isArray(benefitList) || benefitList.length === 0) {
+    return res.status(400).json({ error: 'ias.benefitList must be a non-empty array' });
+  }
+
+  debug('Received provider-claim benefit set request for %d paths', paths.length);
+
+  try {
+    const result = await processProviderClaimBenefitSet(paths, benefitList);
+    return res.status(200).json(result);
+  } catch (error) {
+    debug('Provider claim benefit set error: %s', error.message);
+    return res.status(500).json({
+      error: 'Failed to process provider claim benefit set with LLM',
       detail: error.message,
     });
   }
@@ -215,6 +242,23 @@ async function prepareIasReimbursementBenefitSetController(req, res) {
   }
 }
 
+async function getIasBenefitList(req, res) {
+  const payload = req.body || {};
+  const coverageLimits = payload?.coverageLimits;
+
+  if (!Array.isArray(coverageLimits)) {
+    return res.status(400).json({ error: 'coverageLimits must be an array' });
+  }
+
+  const benefitList = buildIasBenefitListFromCoverageLimits(coverageLimits);
+
+  return res.status(200).json({
+    ias: {
+      benefitList,
+    },
+  });
+}
+
 async function prepareIasReimbursementClaimPayload(req, res) {
   const ocrPayload = req.body || {};
   const memberNrc = ocrPayload?.policy_info?.member_nrc;
@@ -371,6 +415,7 @@ async function processReimbursementClaim(req, res) {
 
 module.exports = {
   providerClaimJson,
+  providerClaimBenefitSetJson,
   memberClaimJson,
   providerClaimJsonExcel,
   getMemberInfoByPolicy,
@@ -378,6 +423,7 @@ module.exports = {
   claimProviderClaim,
   submitClaimProviderClaim,
   prepareIasReimbursementBenefitSetController,
+  getIasBenefitList,
   prepareIasReimbursementClaimPayload,
   submitReimbursementClaim,
   getClaimStatus,

@@ -1,0 +1,127 @@
+{
+    "paths": [
+        "/mnt/c/git/ulink-is-ai/docs/samples/Provider/2411190031/page-000.jpg",
+        "/mnt/c/git/ulink-is-ai/docs/samples/Provider/2411190031/page-001.jpg",
+        "/mnt/c/git/ulink-is-ai/docs/samples/Provider/2411190031/page-002.jpg",
+        "/mnt/c/git/ulink-is-ai/docs/samples/Provider/2411190031/page-003.jpg",
+        "/mnt/c/git/ulink-is-ai/docs/samples/Provider/2411190031/page-004.jpg"
+    ],
+    "ias": {
+        "benefitList": [
+            {
+                "benefit_type_code": "IP",
+                "benefit_type_desc": "Inpatient",
+                "benefit_head_code": "MISC",
+                "benefit_head_desc": "Miscellaneous Charges - covered"
+            },
+            {
+                "benefit_type_code": "IP",
+                "benefit_type_desc": "Inpatient",
+                "benefit_head_code": "ANES",
+                "benefit_head_desc": "Anesthetist"
+            },
+            {
+                "benefit_type_code": "OPAO",
+                "benefit_type_desc": "Add-on Benefit",
+                "benefit_head_code": "SCOR",
+                "benefit_head_desc": "SP"
+            },
+            {
+                "benefit_type_code": "IP",
+                "benefit_type_desc": "Inpatient",
+                "benefit_head_code": "OPRT",
+                "benefit_head_desc": "Operating Theatre Fee"
+            },
+            {
+                "benefit_type_code": "OPAO",
+                "benefit_type_desc": "Add-on Benefit",
+                "benefit_head_code": "XLAB",
+                "benefit_head_desc": "Diagnostics/Lab"
+            },
+            {
+                "benefit_type_code": "OP",
+                "benefit_type_desc": "Outpatient",
+                "benefit_head_code": "OPCA",
+                "benefit_head_desc": "Outpatient cancer treatment"
+            },
+            {
+                "benefit_type_code": "HOSP",
+                "benefit_type_desc": "Pre & Post Hospitalization",
+                "benefit_head_code": "PDX",
+                "benefit_head_desc": "Pre-Hospitalization Diagnostic"
+            },
+            {
+                "benefit_type_code": "OPAO",
+                "benefit_type_desc": "Add-on Benefit",
+                "benefit_head_code": "CCOR",
+                "benefit_head_desc": "GP"
+            },
+            {
+                "benefit_type_code": "IP",
+                "benefit_type_desc": "Inpatient",
+                "benefit_head_code": "HVIS",
+                "benefit_head_desc": "Physician hospital visit"
+            },
+            {
+                "benefit_type_code": "OP",
+                "benefit_type_desc": "Outpatient",
+                "benefit_head_code": "DCS",
+                "benefit_head_desc": "Day Surgery"
+            },
+            {
+                "benefit_type_code": "IP",
+                "benefit_type_desc": "Inpatient",
+                "benefit_head_code": "RB",
+                "benefit_head_desc": "Room & Board"
+            },
+            {
+                "benefit_type_code": "HOSP",
+                "benefit_type_desc": "Pre & Post Hospitalization",
+                "benefit_head_code": "POST",
+                "benefit_head_desc": "POST HOSPITAL FOLLOW UP"
+            },
+            {
+                "benefit_type_code": "IP",
+                "benefit_type_desc": "Inpatient",
+                "benefit_head_code": "SF",
+                "benefit_head_desc": "SURGICAL FEE"
+            },
+            {
+                "benefit_type_code": "OP",
+                "benefit_type_desc": "Outpatient",
+                "benefit_head_code": "ADEN",
+                "benefit_head_desc": "Accidental Outpatient Dental Treatment"
+            },
+            {
+                "benefit_type_code": "PA",
+                "benefit_type_desc": "Personal Accident",
+                "benefit_head_code": "LIFE",
+                "benefit_head_desc": "Death"
+            },
+            {
+                "benefit_type_code": "IP",
+                "benefit_type_desc": "Inpatient",
+                "benefit_head_code": "ICU",
+                "benefit_head_desc": "Intensive Care Unit"
+            },
+            {
+                "benefit_type_code": "OP",
+                "benefit_type_desc": "Outpatient",
+                "benefit_head_code": "OPKD",
+                "benefit_head_desc": "Outpatient Kidney dialysis"
+            },
+            {
+                "benefit_type_code": "IP",
+                "benefit_type_desc": "Inpatient",
+                "benefit_head_code": "SUPP",
+                "benefit_head_desc": "Supplies"
+            },
+            {
+                "benefit_type_code": "OP",
+                "benefit_type_desc": "Outpatient",
+                "benefit_head_code": "ER",
+                "benefit_head_desc": "Rescue room costs"
+            }
+        ]
+    }
+}

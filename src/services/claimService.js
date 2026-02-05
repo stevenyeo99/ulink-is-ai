@@ -8,6 +8,20 @@ const {
 const { convertFilesToJpeg300ppi, convertFilesToPng300dpi } = require('./imageService');
 const { postMemberInfoByPolicy, postClaimSubmission, postClaimStatus, downloadClaimFile } = require('./iasService');
 
+const providerClaimBenefitSetSchema = {
+  name: 'provider_claim_benefit_set',
+  schema: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      benefit_type_code: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+      benefit_head_code: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+      reason: { type: 'string' },
+    },
+    required: ['benefit_type_code', 'benefit_head_code', 'reason'],
+  },
+};
+
 async function processProviderClaim(paths) {
   if (!Array.isArray(paths) || paths.length === 0) {
     throw new Error('paths must be a non-empty array of file paths');
@@ -115,6 +129,48 @@ async function processMemberClaim(paths) {
     base64Images,
     systemPrompt,
     jsonSchema,
+  });
+
+  return extractStructuredJson(llmResponse);
+}
+
+async function processProviderClaimBenefitSet(paths, benefitList) {
+  if (!Array.isArray(paths) || paths.length === 0) {
+    throw new Error('paths must be a non-empty array of file paths');
+  }
+  if (!Array.isArray(benefitList) || benefitList.length === 0) {
+    throw new Error('benefitList must be a non-empty array');
+  }
+
+  const systemPromptPath = path.join(
+    __dirname,
+    '..',
+    'prompts',
+    'claims',
+    'claim-provider-claim-benefit-set-system.md'
+  );
+  const systemPromptBase = await fs.promises.readFile(systemPromptPath, 'utf8');
+  const systemPrompt = `${systemPromptBase}\n\nAvailable benefit list:\n${JSON.stringify(benefitList, null, 2)}`;
+
+  const conversions = await convertFilesToJpeg300ppi(paths);
+  const successfulConversions = conversions.filter((item) => item.status === 'success' && item.outputPath);
+
+  if (successfulConversions.length === 0) {
+    const error = new Error('No successful image conversions available for LLM processing');
+    error.detail = conversions;
+    throw error;
+  }
+
+  const base64Images = [];
+  for (const conversion of successfulConversions) {
+    const imageBuffer = await fs.promises.readFile(conversion.outputPath);
+    base64Images.push(imageBuffer.toString('base64'));
+  }
+
+  const llmResponse = await requestVisionSchemaCompletion({
+    base64Images,
+    systemPrompt,
+    jsonSchema: providerClaimBenefitSetSchema,
   });
 
   return extractStructuredJson(llmResponse);
@@ -515,7 +571,7 @@ function buildIasReimbursementBenefitSetPayload(ocrPayload, memberInfoData) {
   const latestPlan = Array.isArray(memberPlans) ? memberPlans[memberPlans.length - 1] : memberPlans;
   const coverageLimits = Array.isArray(latestPlan?.coverageLimits) ? latestPlan.coverageLimits : [];
   const benefitList = coverageLimits
-    .flatMap((limit) => (limit.limit_type_code === 'H' &&Array.isArray(limit?.benefits) ? limit.benefits : []))
+    .flatMap((limit) => (limit.limit_type_code === 'H' && Array.isArray(limit?.benefits) ? limit.benefits : []))
     .filter(Boolean);
 
   return {
@@ -527,6 +583,13 @@ function buildIasReimbursementBenefitSetPayload(ocrPayload, memberInfoData) {
       benefitList,
     },
   };
+}
+
+function buildIasBenefitListFromCoverageLimits(coverageLimits) {
+  const limits = Array.isArray(coverageLimits) ? coverageLimits : [];
+  return limits
+    .flatMap((limit) => (limit?.limit_type_code === 'H' && Array.isArray(limit?.benefits) ? limit.benefits : []))
+    .filter(Boolean);
 }
 
 function normalizeCurrency(value) {
@@ -758,9 +821,11 @@ async function submitProviderClaimFromPaths(paths) {
 module.exports = {
   processProviderClaim,
   processMemberClaim,
+  processProviderClaimBenefitSet,
   prepareIasReimbursementBenefitSet,
   formatDateToYYYYMMDD,
   buildIasProviderClaimPayload,
+  buildIasBenefitListFromCoverageLimits,
   buildIasReimbursementBenefitSetPayload,
   buildIasReimbursementClaimPayload,
   findLatestFileEntry,
