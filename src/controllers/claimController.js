@@ -2,6 +2,7 @@ const {
   processProviderClaim,
   processMemberClaim,
   processProviderClaimBenefitSet,
+  processPreAssessmentForm,
   buildIasProviderClaimPayload,
   submitProviderClaimFromPaths,
   prepareIasReimbursementBenefitSet,
@@ -66,6 +67,27 @@ async function providerClaimBenefitSetJson(req, res) {
     return res.status(500).json({
       error: 'Failed to process provider claim benefit set with LLM',
       detail: error.message,
+    });
+  }
+}
+
+async function preAssessmentFormJson(req, res) {
+  const { paths } = req.body || {};
+
+  if (!Array.isArray(paths) || paths.length === 0) {
+    return res.status(400).json({ error: 'paths must be a non-empty array of file paths' });
+  }
+
+  debug('Received pre-assessment form OCR request for %d paths', paths.length);
+
+  try {
+    const result = await processPreAssessmentForm(paths);
+    return res.status(200).json(result);
+  } catch (error) {
+    debug('Pre-assessment form OCR error: %s', error.message);
+    return res.status(500).json({
+      error: 'Failed to process pre-assessment form OCR with LLM',
+      detail: error.detail || error.message,
     });
   }
 }
@@ -416,6 +438,7 @@ async function processReimbursementClaim(req, res) {
 module.exports = {
   providerClaimJson,
   providerClaimBenefitSetJson,
+  preAssessmentFormJson,
   memberClaimJson,
   providerClaimJsonExcel,
   getMemberInfoByPolicy,

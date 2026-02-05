@@ -7,6 +7,8 @@ const router = express.Router();
 router.post('/provider_claim/json', claimController.providerClaimJson);
 // get benefit set selection from provider claim documents
 router.post('/provider_claim/benefit_set/json', claimController.providerClaimBenefitSetJson);
+// get json format for pre-assessment form OCR
+router.post('/pre_assestment_form/json', claimController.preAssessmentFormJson);
 // get excel format from provider claim json
 router.post('/provider_claim/json/excel', claimController.providerClaimJsonExcel);
 // Get Member Info API

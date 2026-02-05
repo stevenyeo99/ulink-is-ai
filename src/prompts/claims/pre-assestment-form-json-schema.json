@@ -1,0 +1,136 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "member_declaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "patient_name": { "type": "string", "description": "Patient name from the Member Declaration for Cashless Clinic/Hospital Visit." },
+        "nrc_or_passport": { "type": "string", "description": "NRC or Passport number." },
+        "policy_no": { "type": "string", "description": "Policy number or member/policy identifier shown on the declaration." },
+        "employer_name": { "type": "string", "description": "Name of employer (if present)." },
+        "appointment_or_admission_date": { "type": "string", "description": "Appointment/Admission date stated on the declaration." },
+        "member_name": { "type": "string", "description": "Name of member (Individual Life Insured) near signature section." },
+        "member_signature_date": { "type": "string", "description": "Date next to member signature." }
+      },
+      "required": [
+        "patient_name",
+        "nrc_or_passport",
+        "appointment_or_admission_date",
+        "member_name",
+        "member_signature_date"
+      ]
+    },
+    "pre_admission_part_1": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "patient_name": { "type": "string", "description": "Patient name in Part (1) of the Pre-Admission Form for LOG." },
+        "policy_no": { "type": "string", "description": "Policy number in Part (1)." },
+        "nrc_or_passport": { "type": "string", "description": "NRC or Passport number in Part (1)." },
+        "date_of_birth": { "type": "string", "description": "Date of birth." },
+        "age": { "type": "string", "description": "Age (years)." },
+        "gender": { "type": "string", "description": "Gender (if indicated)." },
+        "address": { "type": "string", "description": "Address or residence." },
+        "ward_or_township": { "type": "string", "description": "Ward/Township or locality." },
+        "email": { "type": "string", "description": "Email address." },
+        "phone_number": { "type": "string", "description": "Phone number." },
+        "admission_date": { "type": "string", "description": "Admission date (if listed in Part 1)." }
+      },
+      "required": [
+        "patient_name",
+        "policy_no",
+        "nrc_or_passport",
+        "date_of_birth",
+        "age",
+        "gender",
+        "ward_or_township",
+        "email",
+        "phone_number"
+      ]
+    },
+    "pre_admission_part_2_medical": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "diagnosis": { "type": "string", "description": "Diagnosis / Provisional Diagnosis." },
+        "condition_related_pregnancy": { "type": "string", "description": "Pregnancy/Childbirth/Infertility/Miscarriage related (Yes/No)." },
+        "condition_related_congenital": { "type": "string", "description": "Congenital/Hereditary disease related (Yes/No)." },
+        "condition_related_drugs_alcohol": { "type": "string", "description": "Drugs/Alcohol abuse related (Yes/No)." },
+        "condition_related_mental": { "type": "string", "description": "Mental/Psychiatric disorder related (Yes/No)." },
+        "condition_related_cosmetic_dental": { "type": "string", "description": "Cosmetic reason/Dental care/Refractive errors correction related (Yes/No)." },
+        "condition_related_hiv": { "type": "string", "description": "AIDS/HIV related (Yes/No)." },
+        "condition_related_none": { "type": "string", "description": "None of the above indicated (Yes/No)." },
+        "clinical_features": { "type": "string", "description": "Details of clinical features." },
+        "first_consultation_date": { "type": "string", "description": "Date of first consultation." },
+        "symptom_onset_date": { "type": "string", "description": "Estimated date of onset of symptoms." },
+        "symptom_duration": { "type": "string", "description": "Duration of symptoms." },
+        "signs_and_symptoms": { "type": "string", "description": "Description of signs and symptoms." }
+      },
+      "required": [
+        "diagnosis",
+        "first_consultation_date",
+        "symptom_onset_date",
+        "symptom_duration",
+        "signs_and_symptoms"
+      ]
+    },
+    "pre_admission_part_2_hospitalization": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "hospitalization_reason": { "type": "string", "description": "Reason for hospitalization if applicable." },
+        "previous_consultation": { "type": "string", "description": "Any previous consultation/treatment/hospitalization (Yes/No)." },
+        "previous_consultation_details": { "type": "string", "description": "Details of previous consultation/treatment/hospitalization." },
+        "surgery_name": { "type": "string", "description": "Name of surgery or procedure (if applicable)." },
+        "estimated_length_of_stay": { "type": "string", "description": "Estimated length of stay in hospital." },
+        "estimated_hospital_cost": { "type": "string", "description": "Estimated hospital cost." },
+        "injury_date_time": { "type": "string", "description": "Date and time of accident/injury (if applicable)." },
+        "injury_circumstances": { "type": "string", "description": "Circumstances and cause of injury." },
+        "additional_attachments": { "type": "string", "description": "Additional attachments if any (e.g., accident report, biopsy report)." }
+      },
+      "required": [
+        "previous_consultation",
+        "surgery_name",
+        "estimated_length_of_stay",
+        "estimated_hospital_cost"
+      ]
+    },
+    "doctor_declaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "doctor_name": { "type": "string", "description": "Doctor's name." },
+        "medical_license_no": { "type": "string", "description": "Medical License No." },
+        "doctor_stamp": { "type": "string", "description": "Stamp of Doctor (if present)." },
+        "declaration_date": { "type": "string", "description": "Date of declaration." }
+      },
+      "required": [
+        "doctor_name",
+        "medical_license_no",
+        "declaration_date"
+      ]
+    },
+    "extra_fields": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "label": { "type": "string" },
+          "value": { "type": "string" }
+        },
+        "required": ["label", "value"]
+      }
+    }
+  },
+  "required": [
+    "member_declaration",
+    "pre_admission_part_1",
+    "pre_admission_part_2_medical",
+    "pre_admission_part_2_hospitalization",
+    "doctor_declaration",
+    "extra_fields"
+  ]
+}

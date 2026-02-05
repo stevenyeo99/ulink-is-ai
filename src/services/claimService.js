@@ -176,6 +176,53 @@ async function processProviderClaimBenefitSet(paths, benefitList) {
   return extractStructuredJson(llmResponse);
 }
 
+async function processPreAssessmentForm(paths) {
+  if (!Array.isArray(paths) || paths.length === 0) {
+    throw new Error('paths must be a non-empty array of file paths');
+  }
+
+  const systemPromptPath = path.join(
+    __dirname,
+    '..',
+    'prompts',
+    'claims',
+    'pre-assessment-form-system.md'
+  );
+  const jsonSchemaPath = path.join(
+    __dirname,
+    '..',
+    'prompts',
+    'claims',
+    'pre-assestment-form-json-schema.json'
+  );
+  const systemPrompt = await fs.promises.readFile(systemPromptPath, 'utf8');
+  const jsonSchemaRaw = await fs.promises.readFile(jsonSchemaPath, 'utf8');
+  const jsonSchema = JSON.parse(jsonSchemaRaw);
+
+  const conversions = await convertFilesToPng300dpi(paths);
+  const successfulConversions = conversions.filter((item) => item.status === 'success' && item.outputPath);
+
+  if (successfulConversions.length === 0) {
+    const error = new Error('No successful image conversions available for LLM processing');
+    error.detail = conversions;
+    throw error;
+  }
+
+  const base64Images = [];
+  for (const conversion of successfulConversions) {
+    const imageBuffer = await fs.promises.readFile(conversion.outputPath);
+    base64Images.push(imageBuffer.toString('base64'));
+  }
+
+  const llmResponse = await requestVisionSchemaCompletion({
+    base64Images,
+    systemPrompt,
+    jsonSchema,
+  });
+
+  return extractStructuredJson(llmResponse);
+}
+
 function reimbursementBenefitSchema(n) {
   return {
     name: 'ias_reimbursement_benefit_items',
@@ -858,6 +905,7 @@ module.exports = {
   processProviderClaim,
   processMemberClaim,
   processProviderClaimBenefitSet,
+  processPreAssessmentForm,
   prepareIasReimbursementBenefitSet,
   formatDateToYYYYMMDD,
   buildIasProviderClaimPayload,
