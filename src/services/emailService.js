@@ -7,18 +7,22 @@ const {
   requestAssistantJsonCompletion,
   extractStructuredJson,
 } = require('./llmService');
-const { submitProviderClaimFromPaths } = require('./claimService');
+const {
+  submitProviderClaimFromPaths,
+  processPreAssessmentForm,
+  processReimbursementClaimFromPaths,
+} = require('./claimService');
 const { saveProviderClaimWorkbook } = require('./excelService');
 const {
   replyMissingAttachments,
   replyMissingDocuments,
   replyMemberPlanMissing,
   replyNoAction,
+  replyPreAssessmentForm,
   replyProviderClaim,
   replyReimbursementClaim,
   replySystemError,
 } = require('./emailReplyService');
-const { processReimbursementClaimFromPaths } = require('./claimService');
 
 const debug = createDebug('app:service:email');
 
@@ -225,7 +229,10 @@ const decisionSchema = {
   schema: {
     type: 'object',
     properties: {
-      action: { type: 'string', enum: ['provider_claim', 'reimbursement_claim', 'no_action'] },
+      action: {
+        type: 'string',
+        enum: ['provider_claim', 'reimbursement_claim', 'pre_assestment_form', 'no_action'],
+      },
       reason: { type: 'string' },
       confidence: { type: 'number' },
     },
@@ -357,7 +364,74 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
             );
           }
 
-          if (decision.action === 'provider_claim') {
+          if (decision.action === 'pre_assestment_form') {
+            if (!storage.supportedAttachmentPaths.length) {
+              const replyResult = await replyMissingAttachments({
+                subject: parsed.subject || envelope.subject || null,
+                to: formatAddressOnlyList(parsed.from?.value),
+                type: 'pre_assestment_form',
+                inReplyTo: parsed.messageId || envelope.messageId || null,
+                references: parsed.messageId || envelope.messageId || null,
+              });
+              if (storage.outputDir) {
+                const replyPath = path.join(storage.outputDir, 'reply.json');
+                await fs.promises.writeFile(
+                  replyPath,
+                  `${JSON.stringify({ type: 'pre_assestment_form_missing_attachments', ...replyResult }, null, 2)}\n`
+                );
+              }
+              localProcessed = true;
+              return { storage, envelope, processed: localProcessed };
+            }
+
+            try {
+              const preAssessmentResult = await processPreAssessmentForm(
+                storage.supportedAttachmentPaths
+              );
+              let pafPath = null;
+
+              if (storage.outputDir) {
+                pafPath = path.join(storage.outputDir, 'PAF.json');
+                await fs.promises.writeFile(
+                  pafPath,
+                  `${JSON.stringify(preAssessmentResult, null, 2)}\n`
+                );
+              }
+
+              const replyResult = await replyPreAssessmentForm({
+                subject: parsed.subject || envelope.subject || null,
+                to: formatAddressOnlyList(parsed.from?.value),
+                pafPath,
+                inReplyTo: parsed.messageId || envelope.messageId || null,
+                references: parsed.messageId || envelope.messageId || null,
+              });
+
+              if (storage.outputDir) {
+                const replyPath = path.join(storage.outputDir, 'reply.json');
+                await fs.promises.writeFile(
+                  replyPath,
+                  `${JSON.stringify({ type: 'pre_assestment_form', ...replyResult }, null, 2)}\n`
+                );
+              }
+            } catch (error) {
+              const replyResult = await replySystemError({
+                subject: parsed.subject || envelope.subject || null,
+                to: formatAddressOnlyList(parsed.from?.value),
+                type: 'pre_assestment_form',
+                inReplyTo: parsed.messageId || envelope.messageId || null,
+                references: parsed.messageId || envelope.messageId || null,
+              });
+              if (storage.outputDir) {
+                const replyPath = path.join(storage.outputDir, 'reply.json');
+                await fs.promises.writeFile(
+                  replyPath,
+                  `${JSON.stringify({ type: 'pre_assestment_form_system_error', ...replyResult }, null, 2)}\n`
+                );
+              }
+              localProcessed = true;
+              return { storage, envelope, processed: localProcessed };
+            }
+          } else if (decision.action === 'provider_claim') {
             if (!storage.supportedAttachmentPaths.length) {
               const replyResult = await replyMissingAttachments({
                 subject: parsed.subject || envelope.subject || null,

@@ -371,7 +371,12 @@ async function replyNoAction({ subject, to, reason, inReplyTo, references }) {
 }
 
 function buildMissingAttachmentsBody(type) {
-  const label = type === 'provider_claim' ? 'provider claim' : 'reimbursement claim';
+  const labelMap = {
+    provider_claim: 'provider claim',
+    reimbursement_claim: 'reimbursement claim',
+    pre_assestment_form: 'pre-assessment form',
+  };
+  const label = labelMap[type] || 'request';
   return [
     'Hello,',
     '',
@@ -399,7 +404,12 @@ function buildMissingDocumentsBody({ type, missingDocs }) {
 }
 
 async function replyMissingAttachments({ subject, to, type, inReplyTo, references }) {
-  const label = type === 'provider_claim' ? 'Provider claim' : 'Reimbursement claim';
+  const labelMap = {
+    provider_claim: 'Provider claim',
+    reimbursement_claim: 'Reimbursement claim',
+    pre_assestment_form: 'Pre-assessment form',
+  };
+  const label = labelMap[type] || 'Request';
   debug('Missing-attachments reply queued for %s (subject: %s, type: %s)', to, subject, type);
 
   const result = await sendEmail({
@@ -416,6 +426,45 @@ async function replyMissingAttachments({ subject, to, type, inReplyTo, reference
     to,
     body: buildMissingAttachmentsBody(type),
     type,
+    messageId: result.messageId || null,
+  };
+}
+
+async function replyPreAssessmentForm({ subject, to, pafPath, inReplyTo, references }) {
+  debug('Pre-assessment form reply queued for %s (subject: %s, payload: %s)', to, subject, pafPath);
+  const body = [
+    'Hello,',
+    '',
+    'Attached is the extracted pre-assessment form data (PAF.json).',
+    '',
+    'Best Regards,',
+    'ULINK AI Assistant',
+  ].join('\n');
+
+  const attachments = [];
+  if (pafPath) {
+    attachments.push({
+      filename: path.basename(pafPath),
+      path: pafPath,
+      contentType: 'application/json',
+    });
+  }
+
+  const result = await sendEmail({
+    to,
+    subject: subject || 'Pre-assessment form JSON',
+    body,
+    attachments,
+    inReplyTo,
+    references,
+  });
+
+  return {
+    status: 'sent',
+    subject: subject || null,
+    to,
+    body,
+    pafPath,
     messageId: result.messageId || null,
   };
 }
@@ -464,12 +513,12 @@ function buildMemberPlanMissingBody() {
 }
 
 function buildSystemErrorBody(type) {
-  const label =
-    type === 'provider_claim'
-      ? 'provider claim'
-      : type === 'reimbursement_claim'
-        ? 'reimbursement claim'
-        : 'claim';
+  const labelMap = {
+    provider_claim: 'provider claim',
+    reimbursement_claim: 'reimbursement claim',
+    pre_assestment_form: 'pre-assessment form',
+  };
+  const label = labelMap[type] || 'claim';
   return [
     'Hello,',
     '',
@@ -507,12 +556,12 @@ async function replyMemberPlanMissing({ subject, to, type, inReplyTo, references
 }
 
 async function replySystemError({ subject, to, type, inReplyTo, references }) {
-  const label =
-    type === 'provider_claim'
-      ? 'Provider claim'
-      : type === 'reimbursement_claim'
-        ? 'Reimbursement claim'
-        : 'Claim';
+  const labelMap = {
+    provider_claim: 'Provider claim',
+    reimbursement_claim: 'Reimbursement claim',
+    pre_assestment_form: 'Pre-assessment form',
+  };
+  const label = labelMap[type] || 'Claim';
   debug('System-error reply queued for %s (subject: %s, type: %s)', to, subject, type);
   const result = await sendEmail({
     to,
@@ -775,6 +824,7 @@ module.exports = {
   replyMissingDocuments,
   replyMemberPlanMissing,
   replyNoAction,
+  replyPreAssessmentForm,
   replyProviderClaim,
   replyReimbursementClaim,
   replySystemError,

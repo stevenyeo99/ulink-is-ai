@@ -5,4 +5,5 @@ If the email is not clearly a provider claim request or a reimbursement claim re
 choose "no_action".
 If the subject explicitly contains "provider claim", treat it as a provider claim.
 If the subject explicitly contains "reimbursement claim" or "member claim", treat it as a reimbursement claim.
+If the subject explicitly contains "pre-assessment form" or "pre admission form" or "pre-admission form" or "PAF", treat it as a pre_assestment_form.
 Respond with JSON that matches the provided schema and do not include extra text.
