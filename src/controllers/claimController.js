@@ -85,6 +85,13 @@ async function preAssessmentFormJson(req, res) {
     return res.status(200).json(result);
   } catch (error) {
     debug('Pre-assessment form OCR error: %s', error.message);
+    if (error.status === 400) {
+      return res.status(400).json({
+        error: error.message,
+        error_code: error.code || 'MISSING_DOCS',
+        detail: error.detail || null,
+      });
+    }
     return res.status(500).json({
       error: 'Failed to process pre-assessment form OCR with LLM',
       detail: error.detail || error.message,

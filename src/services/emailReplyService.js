@@ -94,6 +94,77 @@ function applyFooter(body) {
   return [text, '', footer].join('\n');
 }
 
+async function buildMissingDocsTemplateBody({ senderName, missingDocs }) {
+  const templatePath = path.join(
+    __dirname,
+    '..',
+    '..',
+    'docs',
+    'samples',
+    'Provider',
+    'missing-docs-email-temp.md'
+  );
+  let template = null;
+  try {
+    template = await fs.promises.readFile(templatePath, 'utf8');
+  } catch (error) {
+    template = null;
+  }
+
+  const name = senderName || 'Customer';
+  const rawDocs = Array.isArray(missingDocs)
+    ? missingDocs.filter(Boolean)
+    : String(missingDocs || '').split(/,|\n/).map((item) => item.trim()).filter(Boolean);
+  const cleanedDocs = rawDocs.map((doc) => doc.replace(/^missing\s+/i, '').trim()).filter(Boolean);
+  const docLines =
+    cleanedDocs.length > 0
+      ? cleanedDocs.map((doc) => `• ${doc}`)
+      : ['• Required document'];
+
+  if (!template) {
+    const fallback = [
+      buildGreeting(name),
+      '',
+      'Thank you for submitting the documents for the above-mentioned case.',
+      '',
+      'We have reviewed the submission and noted that the documents received are currently incomplete. To proceed with the insurance approval, we kindly request your assistance to provide the following outstanding documents:',
+      ...docLines,
+      '',
+      'Once we have received the complete set of required documents, we will proceed accordingly with the insurer.',
+      '',
+      'Should you have any questions, please feel free to contact us or update the documents directly via the provider portal.',
+      '',
+      buildFooter(),
+    ].join('\n');
+    return fallback;
+  }
+
+  const docs = cleanedDocs.length > 0 ? cleanedDocs : ['Required document'];
+  const baseLines = template.replace(/\[Sender Name\]/g, name).split('\n');
+  const replaced = [];
+  let docIndex = 0;
+  for (const line of baseLines) {
+    if (line.includes('[Document 1]') || line.includes('[Document 2]') || line.includes('[Document 3]')) {
+      if (docIndex < docs.length) {
+        replaced.push(line.replace(/\[Document \d\]/g, docs[docIndex]));
+        docIndex += 1;
+      }
+      continue;
+    }
+    replaced.push(line);
+  }
+  if (docIndex < docs.length) {
+    const extra = docs.slice(docIndex).map((doc) => `• ${doc}`);
+    const insertAt = replaced.findIndex((line) => line.trim().toLowerCase().startsWith('once we have received'));
+    if (insertAt === -1) {
+      replaced.push(...extra);
+    } else {
+      replaced.splice(insertAt, 0, ...extra, '');
+    }
+  }
+  return replaced.join('\n').trim();
+}
+
 function applyGreeting(body, senderName) {
   const greeting = buildGreeting(senderName);
   const normalized = String(body || '').trim();
@@ -533,7 +604,10 @@ async function replyMissingDocuments({
   const label = type === 'provider_claim' ? 'Provider claim' : 'Claim';
   debug('Missing-documents reply queued for %s (subject: %s, type: %s)', to, subject, type);
 
-  const body = buildMissingDocumentsBody({ type, missingDocs, senderName });
+  const body =
+    type === 'pre_assestment_form' || type === 'provider_claim'
+      ? await buildMissingDocsTemplateBody({ senderName, missingDocs })
+      : buildMissingDocumentsBody({ type, missingDocs, senderName });
   const finalBody = applyFooter(body);
   const result = await sendEmail({
     to,

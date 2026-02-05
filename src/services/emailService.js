@@ -436,19 +436,30 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
                 );
               }
             } catch (error) {
-              const replyResult = await replySystemError({
-                subject: parsed.subject || envelope.subject || null,
-                to: formatAddressOnlyList(parsed.from?.value),
-                type: 'pre_assestment_form',
-                senderName,
-                inReplyTo: parsed.messageId || envelope.messageId || null,
-                references: parsed.messageId || envelope.messageId || null,
-              });
+              const isMissingDocs = error?.code === 'MISSING_DOCS';
+              const replyResult = isMissingDocs
+                ? await replyMissingDocuments({
+                    subject: parsed.subject || envelope.subject || null,
+                    to: formatAddressOnlyList(parsed.from?.value),
+                    type: 'pre_assestment_form',
+                    missingDocs: error?.detail?.missing_docs || null,
+                    senderName,
+                    inReplyTo: parsed.messageId || envelope.messageId || null,
+                    references: parsed.messageId || envelope.messageId || null,
+                  })
+                : await replySystemError({
+                    subject: parsed.subject || envelope.subject || null,
+                    to: formatAddressOnlyList(parsed.from?.value),
+                    type: 'pre_assestment_form',
+                    senderName,
+                    inReplyTo: parsed.messageId || envelope.messageId || null,
+                    references: parsed.messageId || envelope.messageId || null,
+                  });
               if (storage.outputDir) {
                 const replyPath = path.join(storage.outputDir, 'reply.json');
                 await fs.promises.writeFile(
                   replyPath,
-                  `${JSON.stringify({ type: 'pre_assestment_form_system_error', ...replyResult }, null, 2)}\n`
+                  `${JSON.stringify({ type: isMissingDocs ? 'pre_assestment_form_missing_docs' : 'pre_assestment_form_system_error', ...replyResult }, null, 2)}\n`
                 );
               }
               localProcessed = true;

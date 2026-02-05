@@ -232,6 +232,13 @@ async function processPreAssessmentForm(paths) {
     'claims',
     'pre-assessment-form-system.md'
   );
+  const classifyPromptPath = path.join(
+    __dirname,
+    '..',
+    'prompts',
+    'claims',
+    'pre-assessment-form-classify-system.md'
+  );
   const jsonSchemaPath = path.join(
     __dirname,
     '..',
@@ -240,6 +247,7 @@ async function processPreAssessmentForm(paths) {
     'pre-assestment-form-json-schema.json'
   );
   const systemPrompt = await fs.promises.readFile(systemPromptPath, 'utf8');
+  const classifyPrompt = await fs.promises.readFile(classifyPromptPath, 'utf8');
   const jsonSchemaRaw = await fs.promises.readFile(jsonSchemaPath, 'utf8');
   const jsonSchema = JSON.parse(jsonSchemaRaw);
 
@@ -256,6 +264,34 @@ async function processPreAssessmentForm(paths) {
   for (const conversion of successfulConversions) {
     const imageBuffer = await fs.promises.readFile(conversion.outputPath);
     base64Images.push(imageBuffer.toString('base64'));
+  }
+
+  const classifyResponse = await requestVisionSchemaCompletion({
+    base64Images,
+    systemPrompt: classifyPrompt,
+    jsonSchema: {
+      name: 'pre_assessment_form_classify',
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          is_pre_admission_form: { type: 'boolean' },
+          reason: { type: 'string' },
+        },
+        required: ['is_pre_admission_form', 'reason'],
+      },
+    },
+  });
+  const classifyResult = extractStructuredJson(classifyResponse);
+  if (!classifyResult?.is_pre_admission_form) {
+    const error = new Error('Missing required document: Pre-Admission Form for LOG');
+    error.status = 400;
+    error.code = 'MISSING_DOCS';
+    error.detail = {
+      reason: classifyResult?.reason || null,
+      missing_docs: 'Pre-Admission Form for LOG',
+    };
+    throw error;
   }
 
   const llmResponse = await requestVisionSchemaCompletion({
