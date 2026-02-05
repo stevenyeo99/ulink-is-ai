@@ -22,6 +22,19 @@ const providerClaimBenefitSetSchema = {
   },
 };
 
+const providerClaimIcd10Schema = {
+  name: 'provider_claim_icd10',
+  schema: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      diagnosis_code: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+      reason: { type: 'string' },
+    },
+    required: ['diagnosis_code', 'reason'],
+  },
+};
+
 async function processProviderClaim(paths) {
   if (!Array.isArray(paths) || paths.length === 0) {
     throw new Error('paths must be a non-empty array of file paths');
@@ -95,7 +108,38 @@ async function processProviderClaim(paths) {
 
   console.log(`Second Prompt LLM Structured Output: ${JSON.stringify(secondStructured, null, 2)}`);
 
-  return secondStructured;
+  let diagnosisCodeResult = null;
+  const diagnosisDescription = secondStructured?.main_sheet?.diagnosis_description || null;
+  if (diagnosisDescription) {
+    try {
+      const icd10PromptPath = path.join(
+        __dirname,
+        '..',
+        'prompts',
+        'claims',
+        'claim-provider-claim-icd10-system.md'
+      );
+      const icd10Prompt = await fs.promises.readFile(icd10PromptPath, 'utf8');
+      const icd10Response = await requestAssistantJsonCompletion({
+        systemPrompt: icd10Prompt,
+        inputJson: { diagnosis_description: diagnosisDescription },
+        jsonSchema: providerClaimIcd10Schema,
+      });
+      diagnosisCodeResult = extractStructuredJson(icd10Response);
+    } catch (error) {
+      console.log(`ICD10 lookup failed: ${error.message}`);
+    }
+  }
+
+  return {
+    ...secondStructured,
+    main_sheet: {
+      ...(secondStructured?.main_sheet || {}),
+      diagnosis_code: diagnosisCodeResult?.diagnosis_code || null,
+    },
+    diagnosis_code: diagnosisCodeResult?.diagnosis_code || null,
+    diagnosis_code_reason: diagnosisCodeResult?.reason || null,
+  };
 }
 
 async function processMemberClaim(paths) {

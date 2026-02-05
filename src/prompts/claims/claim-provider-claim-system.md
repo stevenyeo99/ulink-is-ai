@@ -66,6 +66,7 @@ main_sheet
   - contains "Hlaing Tharyar" → "031088"
   - contains "Mandalay"       → "031095"
   - contains "Taunggyi"       → "031413"
+  - contains "Ar Yu International" → "031114"
   - else ""
 - incur_date_from:
   - Main service/visit date.
