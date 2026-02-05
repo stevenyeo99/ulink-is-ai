@@ -807,7 +807,17 @@ async function submitProviderClaimFromPaths(paths) {
     throw error;
   }
 
-  const memberInfoData = await postMemberInfoByPolicy({ memberNrc, meplEffDate });
+  const formattedMeplEffDate = formatDateToYYYYMMDD(meplEffDate);
+  if (!formattedMeplEffDate) {
+    const error = new Error('main_sheet.incur_date_from must be a valid date');
+    error.status = 400;
+    throw error;
+  }
+
+  const memberInfoData = await postMemberInfoByPolicy({
+    memberNrc,
+    meplEffDate: formattedMeplEffDate,
+  });
 
   const coverageLimits = memberInfoData?.payload?.memberPlans?.[0]?.coverageLimits
     || memberInfoData?.memberPlans?.[0]?.coverageLimits
