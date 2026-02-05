@@ -118,6 +118,25 @@ function formatAddressOnlyList(list) {
     .filter(Boolean);
 }
 
+function getSenderName(list) {
+  if (!Array.isArray(list) || list.length === 0) {
+    return null;
+  }
+  const first = list.find((entry) => entry && (entry.name || entry.address)) || list[0];
+  if (!first) {
+    return null;
+  }
+  if (first.name) {
+    return String(first.name).trim() || null;
+  }
+  const address = String(first.address || '').trim();
+  if (!address) {
+    return null;
+  }
+  const local = address.split('@')[0];
+  return local || address;
+}
+
 function sanitizeFilename(value) {
   return String(value || '')
     .replace(/[^\w.-]+/g, '_')
@@ -346,6 +365,7 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
 
           const { decision, rawResponse } = await decideEmailAction(decisionInput);
           decisionSummary = decision;
+          const senderName = getSenderName(parsed.from?.value);
 
           if (storage.metadataPath) {
             const updatedMetadata = {
@@ -370,6 +390,7 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
                 subject: parsed.subject || envelope.subject || null,
                 to: formatAddressOnlyList(parsed.from?.value),
                 type: 'pre_assestment_form',
+                senderName,
                 inReplyTo: parsed.messageId || envelope.messageId || null,
                 references: parsed.messageId || envelope.messageId || null,
               });
@@ -402,6 +423,7 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
                 subject: parsed.subject || envelope.subject || null,
                 to: formatAddressOnlyList(parsed.from?.value),
                 pafPath,
+                senderName,
                 inReplyTo: parsed.messageId || envelope.messageId || null,
                 references: parsed.messageId || envelope.messageId || null,
               });
@@ -418,6 +440,7 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
                 subject: parsed.subject || envelope.subject || null,
                 to: formatAddressOnlyList(parsed.from?.value),
                 type: 'pre_assestment_form',
+                senderName,
                 inReplyTo: parsed.messageId || envelope.messageId || null,
                 references: parsed.messageId || envelope.messageId || null,
               });
@@ -437,6 +460,7 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
                 subject: parsed.subject || envelope.subject || null,
                 to: formatAddressOnlyList(parsed.from?.value),
                 type: 'provider_claim',
+                senderName,
                 inReplyTo: parsed.messageId || envelope.messageId || null,
                 references: parsed.messageId || envelope.messageId || null,
               });
@@ -482,6 +506,7 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
                 excelPath,
                 iasResponse,
                 benefitSet,
+                senderName,
                 inReplyTo: parsed.messageId || envelope.messageId || null,
                 references: parsed.messageId || envelope.messageId || null,
               });
@@ -510,6 +535,7 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
                 to: formatAddressOnlyList(parsed.from?.value),
                 type: 'provider_claim',
                 missingDocs,
+                senderName,
                 inReplyTo: parsed.messageId || envelope.messageId || null,
                 references: parsed.messageId || envelope.messageId || null,
               });
@@ -529,6 +555,7 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
                 subject: parsed.subject || envelope.subject || null,
                 to: formatAddressOnlyList(parsed.from?.value),
                 type: 'reimbursement_claim',
+                senderName,
                 inReplyTo: parsed.messageId || envelope.messageId || null,
                 references: parsed.messageId || envelope.messageId || null,
               });
@@ -593,6 +620,7 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
                 downloadedFilePath,
                 ocrPayloadPath,
                 claimPayloadPath,
+                senderName,
                 inReplyTo: parsed.messageId || envelope.messageId || null,
                 references: parsed.messageId || envelope.messageId || null,
               });
@@ -615,6 +643,7 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
                 subject: parsed.subject || envelope.subject || null,
                 to: formatAddressOnlyList(parsed.from?.value),
                 type: 'reimbursement_claim',
+                senderName,
                 inReplyTo: parsed.messageId || envelope.messageId || null,
                 references: parsed.messageId || envelope.messageId || null,
               });
@@ -633,6 +662,7 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
               subject: parsed.subject || envelope.subject || null,
               to: formatAddressOnlyList(parsed.from?.value),
               reason: decision.reason || null,
+              senderName,
               inReplyTo: parsed.messageId || envelope.messageId || null,
               references: parsed.messageId || envelope.messageId || null,
             });

@@ -65,6 +65,47 @@ function extractLlmText(response) {
   return '';
 }
 
+function buildGreeting(senderName) {
+  const name = String(senderName || '').trim();
+  return `Dear ${name || 'Customer'},`;
+}
+
+function buildFooter() {
+  return ['Kind regards,', 'Ulink Assist'].join('\n');
+}
+
+function applyFooter(body) {
+  const footer = buildFooter();
+  const text = String(body || '').trim();
+  if (!text) {
+    return footer;
+  }
+  const lower = text.toLowerCase();
+  if (lower.includes('kind regards,') || lower.includes('best regards,')) {
+    const lines = text.split('\n');
+    const cutIndex = lines.findIndex((line) => {
+      const trimmed = line.trim().toLowerCase();
+      return trimmed.startsWith('kind regards,') || trimmed.startsWith('best regards,');
+    });
+    if (cutIndex !== -1) {
+      return [...lines.slice(0, cutIndex), footer].join('\n').trim();
+    }
+  }
+  return [text, '', footer].join('\n');
+}
+
+function applyGreeting(body, senderName) {
+  const greeting = buildGreeting(senderName);
+  const normalized = String(body || '').trim();
+  if (!normalized) {
+    return `${greeting}\n`;
+  }
+  if (normalized.toLowerCase().startsWith('dear ')) {
+    return normalized;
+  }
+  return [greeting, '', normalized].join('\n');
+}
+
 function buildProviderClaimSummary(ocrData, benefitSet) {
   if (!ocrData || typeof ocrData !== 'object') {
     return null;
@@ -216,9 +257,11 @@ function formatIasResponseBlock(iasResponse) {
   return ['IAS provider claim response:', JSON.stringify(iasResponse, null, 2)].join('\n');
 }
 
-function buildProviderClaimTemplate(claimNo, ocrSummary) {
+function buildProviderClaimTemplate(claimNo, ocrSummary, senderName) {
   const keyDetails = formatKeyDetails(ocrSummary);
   return [
+    buildGreeting(senderName),
+    '',
     'Thank you for submitting the provider claim request.',
     '',
     `Provider Claim No ${claimNo} is successfully created on IAS. You may review this claim record on IAS.`,
@@ -232,21 +275,21 @@ function buildProviderClaimTemplate(claimNo, ocrSummary) {
   ].join('\n');
 }
 
-function buildFallbackReply({ type, subject, iasResponse, ocrSummary }) {
+function buildFallbackReply({ type, subject, iasResponse, ocrSummary, senderName }) {
   if (type === 'provider_claim') {
     const keyDetails = formatKeyDetails(ocrSummary);
     const claimNo = iasResponse?.payload?.claimNo;
     if (iasResponse?.success === true && claimNo) {
       return {
         subject: subject || 'Provider claim request',
-        body: buildProviderClaimTemplate(claimNo, ocrSummary),
+        body: buildProviderClaimTemplate(claimNo, ocrSummary, senderName),
       };
     }
     const responseBlock = formatIasResponseBlock(iasResponse);
     return {
       subject: subject || 'Provider claim request',
       body: [
-        'Hello,',
+        buildGreeting(senderName),
         '',
         'Thanks for your request. The attached JSON is the request payload that will be used to call the IAS provider claim API = provider-claim-request-payload.json.',
         'For more details on each prompt result was generated, please refer to the attached Excel file = llm_prompt_document_result.xlsx.',
@@ -267,13 +310,14 @@ function buildFallbackReply({ type, subject, iasResponse, ocrSummary }) {
         status: iasResponse?.status,
         approvedAmount: iasResponse?.approvedAmount,
         processedOn: iasResponse?.processedOn,
+        senderName,
       }),
     };
   }
   return {
     subject: subject || 'No action taken',
     body: [
-      'Hello,',
+      buildGreeting(senderName),
       '',
       'Thanks for your request. Our AI assistant did not take action for this message yet.',
       '',
@@ -289,6 +333,7 @@ function buildReimbursementClaimTemplate({
   statusLines,
   approvedAmount,
   processedOn,
+  senderName,
 }) {
   const safeClaimNo = claimNo || 'Not available';
   const safeStatus = status || 'Not available';
@@ -299,7 +344,7 @@ function buildReimbursementClaimTemplate({
       ? ['Status:', ...statusLines.map((line) => `${line.label}: ${line.status}`)]
       : [`Status: ${safeStatus}`];
   return [
-    'Dear,',
+    buildGreeting(senderName),
     '',
     'Your claim has been successfully processed by our system.',
     'Please find the claim result below, and the CSR document is attached for your reference.',
@@ -338,7 +383,7 @@ async function sendEmail({ to, subject, body, attachments, inReplyTo, references
   });
 }
 
-async function replyNoAction({ subject, to, reason, inReplyTo, references }) {
+async function replyNoAction({ subject, to, reason, senderName, inReplyTo, references }) {
   debug('No-action reply queued for %s (subject: %s, reason: %s)', to, subject, reason);
   const { body, rawResponse } = await buildReplyFromLlm({
     type: 'no_action',
@@ -347,13 +392,14 @@ async function replyNoAction({ subject, to, reason, inReplyTo, references }) {
   });
 
   const finalReply = isLikelyGarbled(body)
-    ? buildFallbackReply({ type: 'no_action', subject })
-    : { subject, body };
+    ? buildFallbackReply({ type: 'no_action', subject, senderName })
+    : { subject, body: applyGreeting(body, senderName) };
 
+  const finalBody = applyFooter(applyGreeting(finalReply.body, senderName));
   const result = await sendEmail({
     to,
     subject: subject || 'No action taken',
-    body: finalReply.body,
+    body: finalBody,
     inReplyTo,
     references,
   });
@@ -362,7 +408,7 @@ async function replyNoAction({ subject, to, reason, inReplyTo, references }) {
     status: 'sent',
     subject: subject || null,
     to,
-    body: finalReply.body,
+    body: finalBody,
     reason,
     llm_raw_response: rawResponse,
     messageId: result.messageId || null,
@@ -370,7 +416,7 @@ async function replyNoAction({ subject, to, reason, inReplyTo, references }) {
   };
 }
 
-function buildMissingAttachmentsBody(type) {
+function buildMissingAttachmentsBody(type, senderName) {
   const labelMap = {
     provider_claim: 'provider claim',
     reimbursement_claim: 'reimbursement claim',
@@ -378,7 +424,7 @@ function buildMissingAttachmentsBody(type) {
   };
   const label = labelMap[type] || 'request';
   return [
-    'Hello,',
+    buildGreeting(senderName),
     '',
     `Thanks for your request. We could not find any supported PDF or image attachments to process this ${label}.`,
     'Please reply with the claim documents as PDF or image attachments so we can continue.',
@@ -388,11 +434,11 @@ function buildMissingAttachmentsBody(type) {
   ].join('\n');
 }
 
-function buildMissingDocumentsBody({ type, missingDocs }) {
+function buildMissingDocumentsBody({ type, missingDocs, senderName }) {
   const label = type === 'provider_claim' ? 'provider claim' : 'claim';
   const missingText = missingDocs || 'Not available';
   return [
-    'Hello,',
+    buildGreeting(senderName),
     '',
     `Thanks for your request. We could not complete this ${label} because some required documents are missing.`,
     `System Validation: ${missingText}`,
@@ -403,7 +449,7 @@ function buildMissingDocumentsBody({ type, missingDocs }) {
   ].join('\n');
 }
 
-async function replyMissingAttachments({ subject, to, type, inReplyTo, references }) {
+async function replyMissingAttachments({ subject, to, type, senderName, inReplyTo, references }) {
   const labelMap = {
     provider_claim: 'Provider claim',
     reimbursement_claim: 'Reimbursement claim',
@@ -412,10 +458,12 @@ async function replyMissingAttachments({ subject, to, type, inReplyTo, reference
   const label = labelMap[type] || 'Request';
   debug('Missing-attachments reply queued for %s (subject: %s, type: %s)', to, subject, type);
 
+  const body = buildMissingAttachmentsBody(type, senderName);
+  const finalBody = applyFooter(body);
   const result = await sendEmail({
     to,
     subject: subject || `${label} request missing attachments`,
-    body: buildMissingAttachmentsBody(type),
+    body: finalBody,
     inReplyTo,
     references,
   });
@@ -424,16 +472,16 @@ async function replyMissingAttachments({ subject, to, type, inReplyTo, reference
     status: 'sent',
     subject: subject || null,
     to,
-    body: buildMissingAttachmentsBody(type),
+    body: finalBody,
     type,
     messageId: result.messageId || null,
   };
 }
 
-async function replyPreAssessmentForm({ subject, to, pafPath, inReplyTo, references }) {
+async function replyPreAssessmentForm({ subject, to, pafPath, senderName, inReplyTo, references }) {
   debug('Pre-assessment form reply queued for %s (subject: %s, payload: %s)', to, subject, pafPath);
   const body = [
-    'Hello,',
+    buildGreeting(senderName),
     '',
     'The attached Pre-Assessment Form has been successfully processed through our OCR extraction service.',
     '',
@@ -444,6 +492,7 @@ async function replyPreAssessmentForm({ subject, to, pafPath, inReplyTo, referen
     'ULINK AI Assistant',
   ].join('\n');
 
+  const finalBody = applyFooter(body);
   const attachments = [];
   if (pafPath) {
     attachments.push({
@@ -456,7 +505,7 @@ async function replyPreAssessmentForm({ subject, to, pafPath, inReplyTo, referen
   const result = await sendEmail({
     to,
     subject: subject || 'Pre-assessment form JSON',
-    body,
+    body: finalBody,
     attachments,
     inReplyTo,
     references,
@@ -466,7 +515,7 @@ async function replyPreAssessmentForm({ subject, to, pafPath, inReplyTo, referen
     status: 'sent',
     subject: subject || null,
     to,
-    body,
+    body: finalBody,
     pafPath,
     messageId: result.messageId || null,
   };
@@ -477,17 +526,19 @@ async function replyMissingDocuments({
   to,
   type,
   missingDocs,
+  senderName,
   inReplyTo,
   references,
 }) {
   const label = type === 'provider_claim' ? 'Provider claim' : 'Claim';
   debug('Missing-documents reply queued for %s (subject: %s, type: %s)', to, subject, type);
 
-  const body = buildMissingDocumentsBody({ type, missingDocs });
+  const body = buildMissingDocumentsBody({ type, missingDocs, senderName });
+  const finalBody = applyFooter(body);
   const result = await sendEmail({
     to,
     subject: subject || `${label} request missing documents`,
-    body,
+    body: finalBody,
     inReplyTo,
     references,
   });
@@ -496,16 +547,16 @@ async function replyMissingDocuments({
     status: 'sent',
     subject: subject || null,
     to,
-    body,
+    body: finalBody,
     type,
     missingDocs: missingDocs || null,
     messageId: result.messageId || null,
   };
 }
 
-function buildMemberPlanMissingBody() {
+function buildMemberPlanMissingBody(senderName) {
   return [
-    'Hello,',
+    buildGreeting(senderName),
     '',
     'Thanks for your request. The related member plan record on IAS for this claim does not exist.',
     'Please verify the member details and resend the claim documents.',
@@ -515,7 +566,7 @@ function buildMemberPlanMissingBody() {
   ].join('\n');
 }
 
-function buildSystemErrorBody(type) {
+function buildSystemErrorBody(type, senderName) {
   const labelMap = {
     provider_claim: 'provider claim',
     reimbursement_claim: 'reimbursement claim',
@@ -523,7 +574,7 @@ function buildSystemErrorBody(type) {
   };
   const label = labelMap[type] || 'claim';
   return [
-    'Hello,',
+    buildGreeting(senderName),
     '',
     `Thanks for your request. We hit a system error while processing this ${label}.`,
     'Please contact the IT team to check this case.',
@@ -533,7 +584,7 @@ function buildSystemErrorBody(type) {
   ].join('\n');
 }
 
-async function replyMemberPlanMissing({ subject, to, type, inReplyTo, references }) {
+async function replyMemberPlanMissing({ subject, to, type, senderName, inReplyTo, references }) {
   const label =
     type === 'provider_claim'
       ? 'Provider claim'
@@ -541,10 +592,12 @@ async function replyMemberPlanMissing({ subject, to, type, inReplyTo, references
         ? 'Reimbursement claim'
         : 'Claim';
   debug('Member-plan-missing reply queued for %s (subject: %s, type: %s)', to, subject, type);
+  const body = buildMemberPlanMissingBody(senderName);
+  const finalBody = applyFooter(body);
   const result = await sendEmail({
     to,
     subject: subject || `${label} missing member plan`,
-    body: buildMemberPlanMissingBody(),
+    body: finalBody,
     inReplyTo,
     references,
   });
@@ -553,12 +606,12 @@ async function replyMemberPlanMissing({ subject, to, type, inReplyTo, references
     status: 'sent',
     subject: subject || null,
     to,
-    body: buildMemberPlanMissingBody(),
+    body: finalBody,
     messageId: result.messageId || null,
   };
 }
 
-async function replySystemError({ subject, to, type, inReplyTo, references }) {
+async function replySystemError({ subject, to, type, senderName, inReplyTo, references }) {
   const labelMap = {
     provider_claim: 'Provider claim',
     reimbursement_claim: 'Reimbursement claim',
@@ -566,10 +619,12 @@ async function replySystemError({ subject, to, type, inReplyTo, references }) {
   };
   const label = labelMap[type] || 'Claim';
   debug('System-error reply queued for %s (subject: %s, type: %s)', to, subject, type);
+  const body = buildSystemErrorBody(type, senderName);
+  const finalBody = applyFooter(body);
   const result = await sendEmail({
     to,
     subject: subject || `${label} system error`,
-    body: buildSystemErrorBody(type),
+    body: finalBody,
     inReplyTo,
     references,
   });
@@ -578,7 +633,7 @@ async function replySystemError({ subject, to, type, inReplyTo, references }) {
     status: 'sent',
     subject: subject || null,
     to,
-    body: buildSystemErrorBody(type),
+    body: finalBody,
     messageId: result.messageId || null,
   };
 }
@@ -593,7 +648,10 @@ function appendIasResponseIfMissing(body, iasResponse) {
   }
   const responseBlock = formatIasResponseBlock(iasResponse);
   const lines = body.trim().split('\n');
-  const signatureIndex = lines.findIndex((line) => line.trim() === 'Best Regards,');
+  const signatureIndex = lines.findIndex((line) => {
+    const trimmed = line.trim().toLowerCase();
+    return trimmed === 'best regards,' || trimmed === 'kind regards,';
+  });
   if (signatureIndex !== -1) {
     const beforeSignature = lines.slice(0, signatureIndex).join('\n');
     const signature = lines.slice(signatureIndex).join('\n');
@@ -610,6 +668,7 @@ async function replyProviderClaim({
   excelPath,
   iasResponse,
   benefitSet,
+  senderName,
   inReplyTo,
   references,
 }) {
@@ -625,12 +684,13 @@ async function replyProviderClaim({
   });
 
   const finalReply = isLikelyGarbled(body)
-    ? buildFallbackReply({ type: 'provider_claim', subject, iasResponse, ocrSummary })
+    ? buildFallbackReply({ type: 'provider_claim', subject, iasResponse, ocrSummary, senderName })
     : { subject, body: appendIasResponseIfMissing(body, iasResponse) };
-  const finalBody =
+  const finalBody = applyFooter(
     iasResponse?.success === true && claimNo
-      ? buildProviderClaimTemplate(claimNo, ocrSummary)
-      : finalReply.body;
+      ? buildProviderClaimTemplate(claimNo, ocrSummary, senderName)
+      : applyGreeting(finalReply.body, senderName)
+  );
 
   const attachments = [];
   if (payloadPath) {
@@ -748,6 +808,7 @@ async function replyReimbursementClaim({
   downloadedFilePath,
   ocrPayloadPath,
   claimPayloadPath,
+  senderName,
   inReplyTo,
   references,
 }) {
@@ -769,16 +830,18 @@ async function replyReimbursementClaim({
         type: 'reimbursement_claim',
         subject,
         iasResponse: { claimNo, status: summary.status, processedOn: summary.processedOn },
+        senderName,
       })
-    : { subject, body };
+    : { subject, body: applyGreeting(body, senderName) };
 
-  const finalBody = buildReimbursementClaimTemplate({
+  const finalBody = applyFooter(buildReimbursementClaimTemplate({
     claimNo,
     status: statusDetails.statusText,
     statusLines: statusDetails.statusLines,
     approvedAmount,
     processedOn: formatProcessedOn(summary.processedOn),
-  });
+    senderName,
+  }));
 
   const attachments = [];
   if (downloadedFilePath) {
