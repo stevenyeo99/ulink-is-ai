@@ -57,46 +57,11 @@
             "member_name",
             "member_signature_date"
           ]
-        },
-        "representative_declaration": {
-          "type": "object",
-          "additionalProperties": false,
-          "description": "Page 2 (top table): This section is for a representative signing on behalf of the member/patient. DO NOT mix with the 'member (Individual Life Insured)' signature section on Page 3.",
-          "properties": {
-            "signature_present": {
-              "type": "boolean",
-              "description": "Set true if any representative signature/handwriting appears in the signature cell; otherwise false."
-            },
-            "representative_signature_text": {
-              "type": "string",
-              "description": "Page 2: Representative signature cell. If it is only a drawn signature (not readable letters), return \"Signed\". If readable words exist (e.g., 'on behalf of'), copy EXACTLY. If empty, return \"\"."
-            },
-            "representative_on_behalf_text": {
-              "type": "string",
-              "description": "Page 2: Any explicit 'on behalf of' / representative note near the signature area. Copy EXACTLY. If none, return \"\"."
-            },
-            "representative_name": {
-              "type": "string",
-              "description": "Page 2: Name written in the lower-left name cell of the table (below the representative signature row). This is the representative/signer name. Copy EXACTLY. If blank, return \"\"."
-            },
-            "representative_signature_date": {
-              "type": "string",
-              "description": "Page 2: Date written in the right-most date cell. Copy EXACTLY as written (e.g., '19/11/24'). Do not normalize."
-            }
-          },
-          "required": [
-            "signature_present",
-            "representative_signature_text",
-            "representative_on_behalf_text",
-            "representative_name",
-            "representative_signature_date"
-          ]
         }
       },
       "required": [
         "patient_details",
-        "member_signature_section",
-        "representative_declaration"
+        "member_signature_section"
       ]
     },
 
@@ -156,6 +121,41 @@
         "ward_or_township",
         "email",
         "phone_number"
+      ]
+    },
+
+    "representative_declaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Page 2 (top table): This section is for a representative signing on behalf of the member/patient. DO NOT mix with the 'member (Individual Life Insured)' signature section on Page 3.",
+      "properties": {
+        "signature_present": {
+          "type": "boolean",
+          "description": "Set true if any representative signature/handwriting appears in the signature cell; otherwise false."
+        },
+        "representative_signature_text": {
+          "type": "string",
+          "description": "Page 2: Representative signature cell. If it is only a drawn signature (not readable letters), return \"Signed\". If readable words exist (e.g., 'on behalf of'), copy EXACTLY. If empty, return \"\"."
+        },
+        "representative_on_behalf_text": {
+          "type": "string",
+          "description": "Page 2: Any explicit 'on behalf of' / representative note near the signature area. Copy EXACTLY. If none, return \"\"."
+        },
+        "representative_name": {
+          "type": "string",
+          "description": "Page 2: Name written in the lower-left name cell of the table (below the representative signature row). This is the representative/signer name. Copy EXACTLY. If blank, return \"\"."
+        },
+        "representative_signature_date": {
+          "type": "string",
+          "description": "Page 2: Date written in the right-most date cell. Copy EXACTLY as written (e.g., '19/11/24'). Do not normalize."
+        }
+      },
+      "required": [
+        "signature_present",
+        "representative_signature_text",
+        "representative_on_behalf_text",
+        "representative_name",
+        "representative_signature_date"
       ]
     },
 
@@ -248,12 +248,28 @@
       },
       "required": [
         "diagnosis",
+        "condition_related_pregnancy",
+        "condition_related_congenital",
+        "condition_related_drugs_alcohol",
+        "condition_related_mental",
+        "condition_related_cosmetic_dental",
+        "condition_related_hiv",
+        "condition_related_none",
+        "clinical_features",
         "first_consultation_date",
         "symptom_onset_date",
         "symptom_duration",
         "signs_and_symptoms",
         "outpatient_manageable",
-        "previous_consultation_or_hospitalization"
+        "previous_consultation_or_hospitalization",
+        "outpatient_reason_if_yes",
+        "previous_reports_required_note",
+        "surgery_or_procedure_name",
+        "estimated_length_of_stay",
+        "estimated_hospital_cost",
+        "injury_accident_datetime",
+        "injury_circumstances_and_cause",
+        "additional_attachments"
       ]
     },
 
@@ -289,6 +305,7 @@
   "required": [
     "member_declaration_cashless_visit",
     "pre_admission_part_1",
+    "representative_declaration",
     "pre_admission_part_2_medical",
     "doctor_declaration",
     "extra_fields"

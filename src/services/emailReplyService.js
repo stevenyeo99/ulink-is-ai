@@ -435,7 +435,10 @@ async function replyPreAssessmentForm({ subject, to, pafPath, inReplyTo, referen
   const body = [
     'Hello,',
     '',
-    'Attached is the extracted pre-assessment form data (PAF.json).',
+    'The attached Pre-Assessment Form has been successfully processed through our OCR extraction service.',
+    '',
+    'Please find the extracted structured data in the attached PAF.json file.',
+    'This file contains the captured form fields based on the submitted document.',
     '',
     'Best Regards,',
     'ULINK AI Assistant',
