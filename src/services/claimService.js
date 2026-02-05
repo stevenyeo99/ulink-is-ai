@@ -819,6 +819,12 @@ async function submitProviderClaimFromPaths(paths) {
     meplEffDate: formattedMeplEffDate,
   });
 
+  if (!memberInfoData || !Array.isArray(memberInfoData?.payload?.memberPlans) || memberInfoData.payload.memberPlans.length === 0) {
+    const error = new Error('Member plan record not found');
+    error.code = 'MEMBER_PLAN_NOT_FOUND';
+    throw error;
+  }
+
   const coverageLimits = memberInfoData?.payload?.memberPlans?.[0]?.coverageLimits
     || memberInfoData?.memberPlans?.[0]?.coverageLimits
     || [];
