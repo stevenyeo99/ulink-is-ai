@@ -65,7 +65,7 @@ function extractLlmText(response) {
   return '';
 }
 
-function buildProviderClaimSummary(ocrData) {
+function buildProviderClaimSummary(ocrData, benefitSet) {
   if (!ocrData || typeof ocrData !== 'object') {
     return null;
   }
@@ -103,18 +103,19 @@ function buildProviderClaimSummary(ocrData) {
     provider,
     presentedAmount,
     benefitClassification: benefitParts.join(' / '),
+    benefitReason: benefitSet?.reason || ocrData?.benefit_set?.reason || '',
     documentSummary: docSummaryParts.join('\n'),
   };
 }
 
-async function loadProviderClaimSummary(ocrPath) {
+async function loadProviderClaimSummary(ocrPath, benefitSet) {
   if (!ocrPath) {
     return null;
   }
   try {
     const raw = await fs.promises.readFile(ocrPath, 'utf8');
     const parsed = JSON.parse(raw);
-    return buildProviderClaimSummary(parsed);
+    return buildProviderClaimSummary(parsed, benefitSet);
   } catch (error) {
     debug('Failed to read provider claim OCR JSON (%s): %s', ocrPath, error.message);
     return null;
@@ -149,6 +150,7 @@ function formatKeyDetails(ocrSummary) {
     `Provider Code & Name: ${normalize(ocrSummary.provider)}`,
     `Presented Amount: ${normalize(ocrSummary.presentedAmount)}`,
     `Benefit Classification: ${normalize(ocrSummary.benefitClassification)}`,
+    `Benefit Reason: ${normalize(ocrSummary.benefitReason)}`,
     formattedSummary,
   ].join('\n');
 }
@@ -555,12 +557,13 @@ async function replyProviderClaim({
   ocrPath,
   excelPath,
   iasResponse,
+  benefitSet,
   inReplyTo,
   references,
 }) {
   debug('Provider claim reply queued for %s (subject: %s, payload: %s)', to, subject, payloadPath);
   const claimNo = iasResponse?.payload?.claimNo;
-  const ocrSummary = await loadProviderClaimSummary(ocrPath);
+  const ocrSummary = await loadProviderClaimSummary(ocrPath, benefitSet);
   const { body, rawResponse } = await buildReplyFromLlm({
     type: 'provider_claim',
     subject,

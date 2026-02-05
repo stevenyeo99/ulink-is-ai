@@ -808,12 +808,32 @@ async function submitProviderClaimFromPaths(paths) {
   }
 
   const memberInfoData = await postMemberInfoByPolicy({ memberNrc, meplEffDate });
+
+  const coverageLimits = memberInfoData?.payload?.memberPlans?.[0]?.coverageLimits
+    || memberInfoData?.memberPlans?.[0]?.coverageLimits
+    || [];
+  const memberPlanGetBenefitList = {
+    ias: {
+      benefitList: buildIasBenefitListFromCoverageLimits(coverageLimits),
+    },
+  };
+
+  const benefitSet = await processProviderClaimBenefitSet(
+    paths,
+    memberPlanGetBenefitList.ias.benefitList
+  );
+
+  mainSheet.benefit_type = benefitSet?.benefit_type_code || mainSheet.benefit_type;
+  mainSheet.benefit_head = benefitSet?.benefit_head_code || mainSheet.benefit_head;
+
   const providerClaimPayload = buildIasProviderClaimPayload(mainSheet, memberInfoData);
   const iasResponse = await postClaimSubmission(providerClaimPayload);
 
   return {
     providerClaimResult,
     providerClaimPayload,
+    memberPlanGetBenefitList,
+    benefitSet,
     iasResponse,
   };
 }

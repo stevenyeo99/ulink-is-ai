@@ -377,7 +377,7 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
               return { storage, envelope, processed: localProcessed };
             }
             try {
-              const { providerClaimResult, providerClaimPayload, iasResponse } =
+              const { providerClaimResult, providerClaimPayload, iasResponse, benefitSet } =
                 await submitProviderClaimFromPaths(storage.supportedAttachmentPaths);
               let payloadPath = null;
               let ocrPath = null;
@@ -407,6 +407,7 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
                 ocrPath,
                 excelPath,
                 iasResponse,
+                benefitSet,
                 inReplyTo: parsed.messageId || envelope.messageId || null,
                 references: parsed.messageId || envelope.messageId || null,
               });
