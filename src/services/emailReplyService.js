@@ -74,6 +74,10 @@ function buildFooter() {
   return ['Kind regards,', 'Ulink Assist'].join('\n');
 }
 
+function shouldUseNewTemplateReply() {
+  return String(process.env.PROVIDER_CLAIM_USE_NEW_TEMPLATE || '').trim().toLowerCase() === 'true';
+}
+
 function applyFooter(body) {
   const footer = buildFooter();
   const text = String(body || '').trim();
@@ -163,6 +167,41 @@ async function buildMissingDocsTemplateBody({ senderName, missingDocs }) {
     }
   }
   return replaced.join('\n').trim();
+}
+
+async function buildCompleteDocsTemplateBody({ senderName }) {
+  const templatePath = path.join(
+    __dirname,
+    '..',
+    '..',
+    'docs',
+    'samples',
+    'Provider',
+    'complete-docs-email-temp.md'
+  );
+  let template = null;
+  try {
+    template = await fs.promises.readFile(templatePath, 'utf8');
+  } catch (error) {
+    template = null;
+  }
+
+  const name = senderName || 'Customer';
+  if (!template) {
+    return [
+      buildGreeting(name),
+      '',
+      'Thank you for submitting the complete set of documents for the above-mentioned case.',
+      '',
+      'We confirm that all required documents have been received, and Ulink will proceed to submit them to the insurer for approval review.',
+      '',
+      'You may monitor the status via the provider portal or contact Ulink should you require any updates or clarification. We will also inform you should the insurer require any additional documents.',
+      '',
+      buildFooter(),
+    ].join('\n');
+  }
+
+  return template.replace(/\[Sender Name\]/g, name).trim();
 }
 
 function applyGreeting(body, senderName) {
@@ -551,17 +590,7 @@ async function replyMissingAttachments({ subject, to, type, senderName, inReplyT
 
 async function replyPreAssessmentForm({ subject, to, pafPath, senderName, inReplyTo, references }) {
   debug('Pre-assessment form reply queued for %s (subject: %s, payload: %s)', to, subject, pafPath);
-  const body = [
-    buildGreeting(senderName),
-    '',
-    'The attached Pre-Assessment Form has been successfully processed through our OCR extraction service.',
-    '',
-    'Please find the extracted structured data in the attached PAF.json file.',
-    'This file contains the captured form fields based on the submitted document.',
-    '',
-    'Best Regards,',
-    'ULINK AI Assistant',
-  ].join('\n');
+  const body = await buildCompleteDocsTemplateBody({ senderName });
 
   const finalBody = applyFooter(body);
   const attachments = [];
@@ -760,9 +789,13 @@ async function replyProviderClaim({
   const finalReply = isLikelyGarbled(body)
     ? buildFallbackReply({ type: 'provider_claim', subject, iasResponse, ocrSummary, senderName })
     : { subject, body: appendIasResponseIfMissing(body, iasResponse) };
+  const baseSuccessBody = buildProviderClaimTemplate(claimNo, ocrSummary, senderName);
+  const useNewTemplate = shouldUseNewTemplateReply();
   const finalBody = applyFooter(
     iasResponse?.success === true && claimNo
-      ? buildProviderClaimTemplate(claimNo, ocrSummary, senderName)
+      ? (useNewTemplate
+          ? await buildCompleteDocsTemplateBody({ senderName })
+          : baseSuccessBody)
       : applyGreeting(finalReply.body, senderName)
   );
 
@@ -779,6 +812,13 @@ async function replyProviderClaim({
       filename: path.basename(excelPath),
       path: excelPath,
       contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+  }
+  if (useNewTemplate && iasResponse?.success === true && claimNo) {
+    attachments.push({
+      filename: 'provider-claim-original-reply.txt',
+      content: baseSuccessBody,
+      contentType: 'text/plain',
     });
   }
 
@@ -801,6 +841,7 @@ async function replyProviderClaim({
     llm_raw_response: rawResponse,
     messageId: result.messageId || null,
     fallbackUsed: finalReply.body !== body,
+    isNewTempEmailReply: useNewTemplate,
   };
 }
 
