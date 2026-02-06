@@ -18,6 +18,7 @@ No leading/trailing text, no markdown, and no code fences.
 - If unclear, prefer empty values ("", []).
 - Do NOT hallucinate names, dates, codes, or amounts.
 - Follow schema exactly: no added/removed/renamed fields.
+- Do not include unescaped double quotes inside any string value. Prefer single quotes if you must quote text.
 
 FOR THIS FIRST PASS (EXTRACTION ONLY):
 - You MUST NOT perform:

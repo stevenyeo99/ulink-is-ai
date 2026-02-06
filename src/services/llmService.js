@@ -284,6 +284,38 @@ function repairUnescapedQuotes(text) {
   let inString = false;
   let escaped = false;
 
+  const isValidValueStart = (char) => {
+    if (!char) return false;
+    if (char === '"' || char === '{' || char === '[') return true;
+    if (char === '-' || (char >= '0' && char <= '9')) return true;
+    if (char === 't' || char === 'f' || char === 'n') return true;
+    return false;
+  };
+
+  const peekNextNonSpace = (str, start) => {
+    let i = start;
+    while (i < str.length && /\s/.test(str[i])) {
+      i += 1;
+    }
+    return i < str.length ? str[i] : '';
+  };
+
+  const shouldCloseString = (str, index) => {
+    const next = peekNextNonSpace(str, index + 1);
+    if (!next) return true;
+    if (next === ':') return true;
+    if (next === '}' || next === ']') return true;
+    if (next === ',') {
+      let commaIndex = index + 1;
+      while (commaIndex < str.length && /\s/.test(str[commaIndex])) {
+        commaIndex += 1;
+      }
+      const afterComma = peekNextNonSpace(str, commaIndex + 1);
+      return isValidValueStart(afterComma);
+    }
+    return false;
+  };
+
   for (let i = 0; i < text.length; i += 1) {
     const char = text[i];
     if (inString) {
@@ -298,12 +330,7 @@ function repairUnescapedQuotes(text) {
         continue;
       }
       if (char === '"') {
-        let j = i + 1;
-        while (j < text.length && /\s/.test(text[j])) {
-          j += 1;
-        }
-        const next = j < text.length ? text[j] : '';
-        if (!next || next === ',' || next === '}' || next === ']' || next === ':') {
+        if (shouldCloseString(text, i)) {
           inString = false;
           result += char;
         } else {

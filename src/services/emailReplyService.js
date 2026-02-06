@@ -98,7 +98,7 @@ function applyFooter(body) {
   return [text, '', footer].join('\n');
 }
 
-async function buildMissingDocsTemplateBody({ senderName, missingDocs }) {
+async function buildMissingDocsTemplateBody({ senderName, missingDocs, type }) {
   const templatePath = path.join(
     __dirname,
     '..',
@@ -125,6 +125,11 @@ async function buildMissingDocsTemplateBody({ senderName, missingDocs }) {
       ? cleanedDocs.map((doc) => `• ${doc}`)
       : ['• Required document'];
 
+  const providerNote =
+    type === 'provider_claim'
+      ? 'Note: We only process attachments from the most recent email in the thread. Please re-attach all required documents in a single reply.'
+      : null;
+
   if (!template) {
     const fallback = [
       buildGreeting(name),
@@ -135,11 +140,14 @@ async function buildMissingDocsTemplateBody({ senderName, missingDocs }) {
       ...docLines,
       '',
       'Once we have received the complete set of required documents, we will proceed accordingly with the insurer.',
+      providerNote,
       '',
       'Should you have any questions, please feel free to contact us or update the documents directly via the provider portal.',
       '',
       buildFooter(),
-    ].join('\n');
+    ]
+      .filter(Boolean)
+      .join('\n');
     return fallback;
   }
 
@@ -164,6 +172,22 @@ async function buildMissingDocsTemplateBody({ senderName, missingDocs }) {
       replaced.push(...extra);
     } else {
       replaced.splice(insertAt, 0, ...extra, '');
+    }
+  }
+  if (providerNote) {
+    const insertAt = replaced.findIndex((line) =>
+      line.trim().toLowerCase().startsWith('once we have received')
+    );
+    if (insertAt === -1) {
+      if (replaced[replaced.length - 1]?.trim() !== '') {
+        replaced.push('');
+      }
+      replaced.push(providerNote);
+    } else {
+      if (replaced[insertAt + 1]?.trim() !== '') {
+        replaced.splice(insertAt + 1, 0, '');
+      }
+      replaced.splice(insertAt + 2, 0, providerNote);
     }
   }
   return replaced.join('\n').trim();
@@ -533,15 +557,22 @@ function buildMissingAttachmentsBody(type, senderName) {
     pre_assestment_form: 'pre-assessment form',
   };
   const label = labelMap[type] || 'request';
+  const providerNote =
+    type === 'provider_claim'
+      ? 'Note: We only process attachments from the most recent email in the thread. Please re-attach all required documents in a single reply.'
+      : null;
   return [
     buildGreeting(senderName),
     '',
     `Thanks for your request. We could not find any supported PDF or image attachments to process this ${label}.`,
     'Please reply with the claim documents as PDF or image attachments so we can continue.',
+    providerNote,
     '',
     'Best Regards,',
     'ULINK AI Assistant',
-  ].join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
 }
 
 function buildMissingDocumentsBody({ type, missingDocs, senderName }) {
@@ -633,9 +664,9 @@ async function replyMissingDocuments({
   const label = type === 'provider_claim' ? 'Provider claim' : 'Claim';
   debug('Missing-documents reply queued for %s (subject: %s, type: %s)', to, subject, type);
 
-  const body =
+  let body =
     type === 'pre_assestment_form' || type === 'provider_claim'
-      ? await buildMissingDocsTemplateBody({ senderName, missingDocs })
+      ? await buildMissingDocsTemplateBody({ senderName, missingDocs, type })
       : buildMissingDocumentsBody({ type, missingDocs, senderName });
   const finalBody = applyFooter(body);
   const result = await sendEmail({

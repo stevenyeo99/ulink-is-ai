@@ -8,6 +8,18 @@ const {
 const { convertFilesToJpeg300ppi, convertFilesToPng300dpi } = require('./imageService');
 const { postMemberInfoByPolicy, postClaimSubmission, postClaimStatus, downloadClaimFile } = require('./iasService');
 
+function sanitizeDiagnosisCode(value) {
+  if (typeof value !== 'string') {
+    return value ?? null;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const cleaned = trimmed.replace(/[?]+$/g, '').trim();
+  return cleaned || null;
+}
+
 const providerClaimBenefitSetSchema = {
   name: 'provider_claim_benefit_set',
   schema: {
@@ -131,13 +143,15 @@ async function processProviderClaim(paths) {
     }
   }
 
+  const normalizedDiagnosisCode = sanitizeDiagnosisCode(diagnosisCodeResult?.diagnosis_code);
+
   return {
     ...secondStructured,
     main_sheet: {
       ...(secondStructured?.main_sheet || {}),
-      diagnosis_code: diagnosisCodeResult?.diagnosis_code || null,
+      diagnosis_code: normalizedDiagnosisCode,
     },
-    diagnosis_code: diagnosisCodeResult?.diagnosis_code || null,
+    diagnosis_code: normalizedDiagnosisCode,
     diagnosis_code_reason: diagnosisCodeResult?.reason || null,
   };
 }
