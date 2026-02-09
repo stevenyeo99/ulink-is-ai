@@ -239,6 +239,8 @@ async function processPreAssessmentForm(paths) {
     throw new Error('paths must be a non-empty array of file paths');
   }
 
+  console.log('[pre_assestment_form] start processPreAssessmentForm', { pathCount: paths.length });
+
   const systemPromptPath = path.join(
     __dirname,
     '..',
@@ -275,6 +277,10 @@ async function processPreAssessmentForm(paths) {
 
   const conversions = await convertFilesToPng300dpi(paths);
   const successfulConversions = conversions.filter((item) => item.status === 'success' && item.outputPath);
+  console.log('[pre_assestment_form] image conversions', {
+    total: conversions.length,
+    success: successfulConversions.length,
+  });
 
   if (successfulConversions.length === 0) {
     const error = new Error('No successful image conversions available for LLM processing');
@@ -305,6 +311,7 @@ async function processPreAssessmentForm(paths) {
     },
   });
   const classifyResult = extractStructuredJson(classifyResponse);
+  console.log('[pre_assestment_form] classify result', classifyResult);
   if (!classifyResult?.is_pre_admission_form) {
     const error = new Error('Missing required document: Pre-Admission Form for LOG');
     error.status = 400;
@@ -344,6 +351,7 @@ async function processPreAssessmentForm(paths) {
     },
   });
   const requiredFieldsResult = extractStructuredJson(requiredFieldsResponse);
+  console.log('[pre_assestment_form] required fields result', requiredFieldsResult);
   const missingFields = [];
   if (!requiredFieldsResult?.patient_name_detected) missingFields.push('patient_name');
   if (!requiredFieldsResult?.nrc_or_passport_detected) missingFields.push('nrc_or_passport');
@@ -367,6 +375,7 @@ async function processPreAssessmentForm(paths) {
     systemPrompt,
     jsonSchema,
   });
+  console.log('[pre_assestment_form] OCR extraction complete');
 
   return extractStructuredJson(llmResponse);
 }

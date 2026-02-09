@@ -79,12 +79,21 @@ async function preAssessmentFormJson(req, res) {
   }
 
   debug('Received pre-assessment form OCR request for %d paths', paths.length);
+  console.log('[pre_assestment_form/json] paths:', paths);
 
   try {
+    console.log('[pre_assestment_form/json] start processPreAssessmentForm');
     const result = await processPreAssessmentForm(paths);
+    console.log('[pre_assestment_form/json] processPreAssessmentForm complete');
     return res.status(200).json(result);
   } catch (error) {
     debug('Pre-assessment form OCR error: %s', error.message);
+    console.log('[pre_assestment_form/json] error:', {
+      message: error?.message,
+      code: error?.code,
+      status: error?.status,
+      detail: error?.detail || null,
+    });
     if (error.status === 400) {
       return res.status(400).json({
         error: error.message,
@@ -221,9 +230,12 @@ async function submitClaimProviderClaim(req, res) {
   }
 
   try {
+    console.log('[ias/submit/provider_claim] paths:', paths);
+    console.log('[ias/submit/provider_claim] start submitProviderClaimFromPaths');
     const { providerClaimResult,
     providerClaimPayload,
     iasResponse, } = await submitProviderClaimFromPaths(paths);
+    console.log('[ias/submit/provider_claim] submitProviderClaimFromPaths complete');
     return res.status(200).json({
       providerClaimResult,
       providerClaimPayload,
@@ -231,6 +243,12 @@ async function submitClaimProviderClaim(req, res) {
     });
   } catch (error) {
     debug('IAS submit provider claim error: %s', error.message);
+    console.log('[ias/submit/provider_claim] error:', {
+      message: error?.message,
+      code: error?.code,
+      status: error?.status,
+      detail: error?.detail || null,
+    });
     const errorCode = error?.code || 'SYSTEM_ERROR';
     if (error.status === 400) {
       return res.status(400).json({
