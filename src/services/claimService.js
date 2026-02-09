@@ -274,6 +274,7 @@ async function processPreAssessmentForm(paths) {
   const requiredFieldsPrompt = await fs.promises.readFile(requiredFieldsPromptPath, 'utf8');
   const jsonSchemaRaw = await fs.promises.readFile(jsonSchemaPath, 'utf8');
   const jsonSchema = JSON.parse(jsonSchemaRaw);
+  const preAssessmentModel = process.env.MODEL_2;
 
   const conversions = await convertFilesToPng300dpi(paths);
   const successfulConversions = conversions.filter((item) => item.status === 'success' && item.outputPath);
@@ -309,6 +310,7 @@ async function processPreAssessmentForm(paths) {
         required: ['is_pre_admission_form', 'reason'],
       },
     },
+    model: preAssessmentModel,
   });
   const classifyResult = extractStructuredJson(classifyResponse);
   console.log('[pre_assestment_form] classify result', classifyResult);
@@ -335,8 +337,8 @@ async function processPreAssessmentForm(paths) {
           patient_name_detected: { type: 'boolean' },
           nrc_or_passport_detected: { type: 'boolean' },
           diagnosis_detected: { type: 'boolean' },
-          hospital_name_detected: { type: 'boolean' },
           admission_date_detected: { type: 'boolean' },
+          hospital_name_detected: { type: 'boolean' },
           signature_detected: { type: 'boolean' },
           amount_detected: { type: 'boolean' },
           reason: { type: 'string' },
@@ -345,14 +347,15 @@ async function processPreAssessmentForm(paths) {
           'patient_name_detected',
           'nrc_or_passport_detected',
           'diagnosis_detected',
-          'hospital_name_detected',
           'admission_date_detected',
+          'hospital_name_detected',
           'signature_detected',
           'amount_detected',
           'reason',
         ],
       },
     },
+    model: preAssessmentModel,
   });
   const requiredFieldsResult = extractStructuredJson(requiredFieldsResponse);
   console.log('[pre_assestment_form] required fields result', requiredFieldsResult);
@@ -379,10 +382,65 @@ async function processPreAssessmentForm(paths) {
     base64Images,
     systemPrompt,
     jsonSchema,
+    model: preAssessmentModel,
   });
   console.log('[pre_assestment_form] OCR extraction complete');
+  const extractedResult = extractStructuredJson(llmResponse);
 
-  return extractStructuredJson(llmResponse);
+  const extractedHospitalName = extractedResult?.pre_admission_part_1?.hospital_name;
+  if (
+    requiredFieldsResult?.hospital_name_detected &&
+    (!extractedHospitalName || !String(extractedHospitalName).trim())
+  ) {
+    try {
+      const hospitalFallbackPrompt = [
+        'You are extracting one field from a pre-admission form image set.',
+        'Return only JSON.',
+        'Target field: pre_admission_part_1.hospital_name',
+        'Rules:',
+        '- Read only the Part (1) patient-info table row for hospital/clinic/provider.',
+        '- If a short handwritten value appears there (e.g., "Ar Yu"), copy exactly as written.',
+        '- Do NOT use insurer/logo text (e.g., "Dai-ichi Life", "Ulink Assist Myanmar").',
+        '- Do NOT copy from occupation/ward rows (e.g., "On duty").',
+        '- If truly unreadable, return empty string.',
+      ].join('\n');
+
+      const hospitalFallbackResponse = await requestVisionSchemaCompletion({
+        base64Images,
+        systemPrompt: hospitalFallbackPrompt,
+        jsonSchema: {
+          name: 'pre_assessment_hospital_name_fallback',
+          schema: {
+            type: 'object',
+            additionalProperties: false,
+            properties: {
+              hospital_name: { type: 'string' },
+              reason: { type: 'string' },
+            },
+            required: ['hospital_name', 'reason'],
+          },
+        },
+        model: preAssessmentModel,
+      });
+
+      const hospitalFallbackResult = extractStructuredJson(hospitalFallbackResponse);
+      const fallbackHospitalName = hospitalFallbackResult?.hospital_name;
+      if (fallbackHospitalName && String(fallbackHospitalName).trim()) {
+        extractedResult.pre_admission_part_1 = {
+          ...(extractedResult?.pre_admission_part_1 || {}),
+          hospital_name: String(fallbackHospitalName).trim(),
+        };
+        console.log('[pre_assestment_form] hospital_name fallback applied', {
+          hospital_name: String(fallbackHospitalName).trim(),
+          reason: hospitalFallbackResult?.reason || null,
+        });
+      }
+    } catch (error) {
+      console.log(`[pre_assestment_form] hospital_name fallback failed: ${error.message}`);
+    }
+  }
+
+  return extractedResult;
 }
 
 function reimbursementBenefitSchema(n) {

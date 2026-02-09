@@ -585,7 +585,9 @@ async function sendEmail({ to, subject, body, attachments, inReplyTo, references
   try {
     await appendToSentMailbox(rawMessage);
   } catch (error) {
-    debug('Failed to append sent email: %s', error?.message || error);
+    const message = error?.message || error;
+    debug('Failed to append sent email: %s', message);
+    console.log('[email-reply] Failed to append sent email:', message);
   }
 
   return sendResult;
