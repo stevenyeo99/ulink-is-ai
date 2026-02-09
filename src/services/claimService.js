@@ -253,6 +253,13 @@ async function processPreAssessmentForm(paths) {
     'claims',
     'pre-assessment-form-classify-system.md'
   );
+  const requiredFieldsPromptPath = path.join(
+    __dirname,
+    '..',
+    'prompts',
+    'claims',
+    'pre-assessment-form-required-fields-system.md'
+  );
   const jsonSchemaPath = path.join(
     __dirname,
     '..',
@@ -262,6 +269,7 @@ async function processPreAssessmentForm(paths) {
   );
   const systemPrompt = await fs.promises.readFile(systemPromptPath, 'utf8');
   const classifyPrompt = await fs.promises.readFile(classifyPromptPath, 'utf8');
+  const requiredFieldsPrompt = await fs.promises.readFile(requiredFieldsPromptPath, 'utf8');
   const jsonSchemaRaw = await fs.promises.readFile(jsonSchemaPath, 'utf8');
   const jsonSchema = JSON.parse(jsonSchemaRaw);
 
@@ -304,6 +312,52 @@ async function processPreAssessmentForm(paths) {
     error.detail = {
       reason: classifyResult?.reason || null,
       missing_docs: 'Pre-Admission Form for LOG',
+    };
+    throw error;
+  }
+
+  const requiredFieldsResponse = await requestVisionSchemaCompletion({
+    base64Images,
+    systemPrompt: requiredFieldsPrompt,
+    jsonSchema: {
+      name: 'pre_assessment_form_required_fields',
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          patient_name_detected: { type: 'boolean' },
+          nrc_or_passport_detected: { type: 'boolean' },
+          date_of_birth_detected: { type: 'boolean' },
+          date_of_admission_detected: { type: 'boolean' },
+          diagnosis_detected: { type: 'boolean' },
+          reason: { type: 'string' },
+        },
+        required: [
+          'patient_name_detected',
+          'nrc_or_passport_detected',
+          'date_of_birth_detected',
+          'date_of_admission_detected',
+          'diagnosis_detected',
+          'reason',
+        ],
+      },
+    },
+  });
+  const requiredFieldsResult = extractStructuredJson(requiredFieldsResponse);
+  const missingFields = [];
+  if (!requiredFieldsResult?.patient_name_detected) missingFields.push('patient_name');
+  if (!requiredFieldsResult?.nrc_or_passport_detected) missingFields.push('nrc_or_passport');
+  if (!requiredFieldsResult?.date_of_birth_detected) missingFields.push('date_of_birth');
+  if (!requiredFieldsResult?.date_of_admission_detected) missingFields.push('date_of_admission');
+  if (!requiredFieldsResult?.diagnosis_detected) missingFields.push('diagnosis');
+
+  if (missingFields.length > 0) {
+    const error = new Error('Missing required fields for pre-assessment form OCR');
+    error.status = 400;
+    error.code = 'MISSING_REQUIRED_FIELDS';
+    error.detail = {
+      reason: requiredFieldsResult?.reason || null,
+      missing_fields: missingFields,
     };
     throw error;
   }

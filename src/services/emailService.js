@@ -437,12 +437,32 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
               }
             } catch (error) {
               const isMissingDocs = error?.code === 'MISSING_DOCS';
-              const replyResult = isMissingDocs
+              const isMissingRequiredFields = error?.code === 'MISSING_REQUIRED_FIELDS';
+              let missingDocs = null;
+              if (isMissingDocs) {
+                missingDocs = error?.detail?.missing_docs || null;
+              } else if (isMissingRequiredFields) {
+                const fieldLabels = {
+                  patient_name: 'Patient name',
+                  nrc_or_passport: 'NRC or passport',
+                  date_of_birth: 'Date of birth',
+                  date_of_admission: 'Date of admission',
+                  diagnosis: 'Diagnosis',
+                };
+                const missingFields = Array.isArray(error?.detail?.missing_fields)
+                  ? error.detail.missing_fields
+                  : [];
+                missingDocs = missingFields
+                  .map((field) => fieldLabels[field] || field)
+                  .filter(Boolean);
+              }
+
+              const replyResult = isMissingDocs || isMissingRequiredFields
                 ? await replyMissingDocuments({
                     subject: parsed.subject || envelope.subject || null,
                     to: formatAddressOnlyList(parsed.from?.value),
                     type: 'pre_assestment_form',
-                    missingDocs: error?.detail?.missing_docs || null,
+                    missingDocs,
                     senderName,
                     inReplyTo: parsed.messageId || envelope.messageId || null,
                     references: parsed.messageId || envelope.messageId || null,
@@ -457,9 +477,14 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
                   });
               if (storage.outputDir) {
                 const replyPath = path.join(storage.outputDir, 'reply.json');
+                const replyType = isMissingDocs
+                  ? 'pre_assestment_form_missing_docs'
+                  : isMissingRequiredFields
+                    ? 'pre_assestment_form_missing_required_fields'
+                    : 'pre_assestment_form_system_error';
                 await fs.promises.writeFile(
                   replyPath,
-                  `${JSON.stringify({ type: isMissingDocs ? 'pre_assestment_form_missing_docs' : 'pre_assestment_form_system_error', ...replyResult }, null, 2)}\n`
+                  `${JSON.stringify({ type: replyType, ...replyResult }, null, 2)}\n`
                 );
               }
               localProcessed = true;
