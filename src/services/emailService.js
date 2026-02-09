@@ -118,6 +118,38 @@ function formatAddressOnlyList(list) {
     .filter(Boolean);
 }
 
+function stripHtmlToText(html) {
+  if (!html) {
+    return '';
+  }
+  return String(html)
+    .replace(/<\s*script[^>]*>[\s\S]*?<\s*\/\s*script>/gi, ' ')
+    .replace(/<\s*style[^>]*>[\s\S]*?<\s*\/\s*style>/gi, ' ')
+    .replace(/<\s*br\s*\/?>/gi, '\n')
+    .replace(/<\s*\/\s*p\s*>/gi, '\n')
+    .replace(/<\s*p\b[^>]*>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\r\n/g, '\n')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function buildDecisionBody(parsed) {
+  const text = String(parsed?.text || '').trim();
+  const htmlText = stripHtmlToText(parsed?.html || '');
+  if (text && htmlText && text !== htmlText) {
+    return [text, '', '---', htmlText].join('\n').trim();
+  }
+  return (text || htmlText || '').trim();
+}
+
 function getSenderName(list) {
   if (!Array.isArray(list) || list.length === 0) {
     return null;
@@ -388,11 +420,17 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
             from: formatAddressOnlyList(parsed.from?.value),
             cc: formatAddressOnlyList(parsed.cc?.value),
             date: message.internalDate ? new Date(message.internalDate).toISOString() : null,
-            body: parsed.text || parsed.html || '',
+            body: buildDecisionBody(parsed),
             attachments: storage.attachments,
           };
 
           const { decision, rawResponse } = await decideEmailAction(decisionInput);
+          console.log('[email-decision]', {
+            subject: decisionInput.subject,
+            action: decision?.action || null,
+            reason: decision?.reason || null,
+            confidence: decision?.confidence || null,
+          });
           decisionSummary = decision;
           const senderName = getSenderName(parsed.from?.value);
 
@@ -474,9 +512,10 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
                 const fieldLabels = {
                   patient_name: 'Patient name',
                   nrc_or_passport: 'NRC or passport',
-                  date_of_birth: 'Date of birth',
-                  date_of_admission: 'Date of admission',
                   diagnosis: 'Diagnosis',
+                  hospital_name: 'Hospital name',
+                  admission_date: 'Admission date',
+                  signature: 'Signature',
                 };
                 const missingFields = Array.isArray(error?.detail?.missing_fields)
                   ? error.detail.missing_fields

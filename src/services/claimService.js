@@ -334,17 +334,21 @@ async function processPreAssessmentForm(paths) {
         properties: {
           patient_name_detected: { type: 'boolean' },
           nrc_or_passport_detected: { type: 'boolean' },
-          date_of_birth_detected: { type: 'boolean' },
-          date_of_admission_detected: { type: 'boolean' },
           diagnosis_detected: { type: 'boolean' },
+          hospital_name_detected: { type: 'boolean' },
+          admission_date_detected: { type: 'boolean' },
+          signature_detected: { type: 'boolean' },
+          amount_detected: { type: 'boolean' },
           reason: { type: 'string' },
         },
         required: [
           'patient_name_detected',
           'nrc_or_passport_detected',
-          'date_of_birth_detected',
-          'date_of_admission_detected',
           'diagnosis_detected',
+          'hospital_name_detected',
+          'admission_date_detected',
+          'signature_detected',
+          'amount_detected',
           'reason',
         ],
       },
@@ -355,9 +359,10 @@ async function processPreAssessmentForm(paths) {
   const missingFields = [];
   if (!requiredFieldsResult?.patient_name_detected) missingFields.push('patient_name');
   if (!requiredFieldsResult?.nrc_or_passport_detected) missingFields.push('nrc_or_passport');
-  if (!requiredFieldsResult?.date_of_birth_detected) missingFields.push('date_of_birth');
-  if (!requiredFieldsResult?.date_of_admission_detected) missingFields.push('date_of_admission');
   if (!requiredFieldsResult?.diagnosis_detected) missingFields.push('diagnosis');
+  if (!requiredFieldsResult?.hospital_name_detected) missingFields.push('hospital_name');
+  if (!requiredFieldsResult?.admission_date_detected) missingFields.push('admission_date');
+  if (!requiredFieldsResult?.signature_detected) missingFields.push('signature');
 
   if (missingFields.length > 0) {
     const error = new Error('Missing required fields for pre-assessment form OCR');

@@ -89,9 +89,9 @@
           "type": "string",
           "description": "Part (1) patient info table: Admission/Appointment date (the row where the sample shows 19.11.2024). Copy exactly as written."
         },
-        "nationality_or_race": {
+        "provider_name": {
           "type": "string",
-          "description": "Part (1) patient info table: The row after date fields that records nationality/race/ethnicity (label is Burmese). Copy exactly what is written in that row. If blank, return empty string."
+          "description": "Part (1) patient info table: The row after date fields that records hospital/clinic/provider (label is Burmese). Copy exactly what is written in that row. If blank, return empty string."
         },
         "occupation": {
           "type": "string",
@@ -116,7 +116,7 @@
         "nrc_or_passport",
         "date_of_birth",
         "admission_or_appointment_date",
-        "nationality_or_race",
+        "provider_name",
         "occupation",
         "ward_or_township",
         "email",
