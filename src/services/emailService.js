@@ -281,6 +281,35 @@ async function loadDecisionPrompts() {
 }
 
 async function decideEmailAction(decisionInput) {
+  const subject = String(decisionInput?.subject || '');
+  const body = String(decisionInput?.body || '');
+  const combined = `${subject}\n${body}`.toLowerCase();
+  const hasPaf =
+    /(^|[^a-z0-9])paf([^a-z0-9]|$)/i.test(subject) ||
+    /(^|[^a-z0-9])paf([^a-z0-9]|$)/i.test(body);
+  const hasPreApproval =
+    combined.includes('pre approval') ||
+    combined.includes('pre-approval') ||
+    combined.includes('preapproval') ||
+    combined.includes('pre approval of treatment') ||
+    combined.includes('pre-approval of treatment');
+  const hasPreAdmission =
+    combined.includes('pre admission') ||
+    combined.includes('pre-admission') ||
+    combined.includes('pre assessment') ||
+    combined.includes('pre-assessment');
+
+  if (hasPaf || hasPreApproval || hasPreAdmission) {
+    return {
+      decision: {
+        action: 'pre_assestment_form',
+        reason: 'Matched pre-assessment/pre-admission/PAF/pre-approval keywords',
+        confidence: 0.95,
+      },
+      rawResponse: null,
+    };
+  }
+
   const prompts = await loadDecisionPrompts();
   const systemPrompt = `${prompts.systemPrompt}\n\n${prompts.functionCatalog}`;
   const response = await requestAssistantJsonCompletion({

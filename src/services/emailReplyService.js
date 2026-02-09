@@ -2,6 +2,8 @@ const createDebug = require('debug');
 const fs = require('fs');
 const path = require('path');
 const nodemailer = require('nodemailer');
+const MailComposer = require('nodemailer/lib/mail-composer');
+const { ImapFlow } = require('imapflow');
 const { requestAssistantJsonCompletion } = require('./llmService');
 
 const debug = createDebug('app:service:email-reply');
@@ -140,7 +142,6 @@ async function buildMissingDocsTemplateBody({ senderName, missingDocs, type }) {
       ...docLines,
       '',
       'Once we have received the complete set of required documents, we will proceed accordingly with the insurer.',
-      providerNote,
       '',
       'Should you have any questions, please feel free to contact us or update the documents directly via the provider portal.',
       '',
@@ -497,6 +498,66 @@ function buildReimbursementClaimTemplate({
   ].join('\n');
 }
 
+function getImapConfig() {
+  const host = process.env.IMAP_HOST;
+  const user = process.env.IMAP_USER;
+  const password = process.env.IMAP_PASSWORD;
+
+  if (!host || !user || !password) {
+    throw new Error('IMAP_HOST, IMAP_USER, and IMAP_PASSWORD must be configured');
+  }
+
+  const port = Number.parseInt(process.env.IMAP_PORT || '993', 10);
+  const secureEnv = String(process.env.IMAP_TLS || '').toLowerCase();
+  const secure = secureEnv === 'true' || secureEnv === '1' || port === 993;
+  const sentMailbox = String(process.env.IMAP_SENT_FOLDER || 'INBOX.Sent').trim() || 'INBOX.Sent';
+
+  return {
+    host,
+    port,
+    secure,
+    user,
+    password,
+    sentMailbox,
+  };
+}
+
+async function appendToSentMailbox(rawMessage) {
+  const imapConfig = getImapConfig();
+  const client = new ImapFlow({
+    host: imapConfig.host,
+    port: imapConfig.port,
+    secure: imapConfig.secure,
+    auth: {
+      user: imapConfig.user,
+      pass: imapConfig.password,
+    },
+  });
+
+  try {
+    await client.connect();
+    await client.append(imapConfig.sentMailbox, rawMessage, {
+      flags: ['\\Seen'],
+      internalDate: new Date(),
+    });
+  } finally {
+    await client.logout().catch(() => {});
+  }
+}
+
+async function buildRawEmailMessage({ from, to, subject, body, attachments, inReplyTo, references }) {
+  const composer = new MailComposer({
+    from,
+    to,
+    subject,
+    text: body,
+    attachments,
+    inReplyTo,
+    references,
+  });
+  return composer.compile().build();
+}
+
 async function sendEmail({ to, subject, body, attachments, inReplyTo, references }) {
   const smtpConfig = getSmtpConfig();
   const transporter = nodemailer.createTransport({
@@ -506,15 +567,28 @@ async function sendEmail({ to, subject, body, attachments, inReplyTo, references
     auth: smtpConfig.auth,
   });
 
-  return transporter.sendMail({
+  const rawMessage = await buildRawEmailMessage({
     from: smtpConfig.from,
     to,
     subject,
-    text: body,
+    body,
     attachments,
     inReplyTo,
     references,
   });
+
+  const sendResult = await transporter.sendMail({
+    envelope: { from: smtpConfig.from, to },
+    raw: rawMessage,
+  });
+
+  try {
+    await appendToSentMailbox(rawMessage);
+  } catch (error) {
+    debug('Failed to append sent email: %s', error?.message || error);
+  }
+
+  return sendResult;
 }
 
 async function replyNoAction({ subject, to, reason, senderName, inReplyTo, references }) {
@@ -566,7 +640,6 @@ function buildMissingAttachmentsBody(type, senderName) {
     '',
     `Thanks for your request. We could not find any supported PDF or image attachments to process this ${label}.`,
     'Please reply with the claim documents as PDF or image attachments so we can continue.',
-    providerNote,
     '',
     'Best Regards,',
     'ULINK AI Assistant',
