@@ -64,6 +64,7 @@ async function processProviderClaim(paths) {
   if (!Array.isArray(paths) || paths.length === 0) {
     throw new Error('paths must be a non-empty array of file paths');
   }
+  const startedAt = Date.now();
 
   const systemPromptPath = path.join(
     __dirname,
@@ -94,7 +95,17 @@ async function processProviderClaim(paths) {
 
   const conversions = await convertFilesToJpeg300ppi(paths);
 
-  console.log('Image Conversion Results:', conversions);
+  logEvent({
+    event: 'provider.ocr.image_conversion.completed',
+    message: 'Provider claim pages were converted to images.',
+    status: 'success',
+    action: 'provider_claim',
+    details: {
+      total: conversions.length,
+      success: conversions.filter((item) => item.status === 'success' && item.outputPath).length,
+      failed: conversions.filter((item) => item.status !== 'success' || !item.outputPath).length,
+    },
+  });
 
   const successfulConversions = conversions.filter((item) => item.status === 'success' && item.outputPath);
 
@@ -118,20 +129,37 @@ async function processProviderClaim(paths) {
 
   const structured = extractStructuredJson(llmResponse);
 
-  console.log(`First Prompt LLM Structured Output: ${JSON.stringify(structured, null, 2)}`);
+  logEvent({
+    event: 'provider.ocr.first_pass.completed',
+    message: 'Provider claim first OCR extraction completed.',
+    status: 'success',
+    action: 'provider_claim',
+  });
 
-  console.log('Begin run Assistant validation prompt...');
+  logEvent({
+    event: 'provider.ocr.validation.started',
+    message: 'Provider claim validation pass started.',
+    status: 'start',
+    action: 'provider_claim',
+  });
   const validateResponse = await requestAssistantJsonCompletion({
     systemPrompt: validatePrompt,
     inputJson: structured,
   });
-  console.log('Finish run Assistant validation prompt...');
+  logEvent({
+    event: 'provider.ocr.validation.completed',
+    message: 'Provider claim validation pass completed.',
+    status: 'success',
+    action: 'provider_claim',
+  });
 
-  console.log('Begin extract structured from validation response...');
   const secondStructured = extractStructuredJson(validateResponse);
-  console.log('Finish extract structured from validation response...');
-
-  console.log(`Second Prompt LLM Structured Output: ${JSON.stringify(secondStructured, null, 2)}`);
+  logEvent({
+    event: 'provider.ocr.validation.extract.completed',
+    message: 'Provider claim validated structured output parsed.',
+    status: 'success',
+    action: 'provider_claim',
+  });
 
   let diagnosisCodeResult = null;
   const diagnosisDescription = secondStructured?.main_sheet?.diagnosis_description || null;
@@ -152,13 +180,21 @@ async function processProviderClaim(paths) {
       });
       diagnosisCodeResult = extractStructuredJson(icd10Response);
     } catch (error) {
-      console.log(`ICD10 lookup failed: ${error.message}`);
+      logEvent({
+        event: 'provider.icd10.lookup.failed',
+        message: 'ICD10 lookup failed. Continuing with fallback behavior.',
+        status: 'warning',
+        action: 'provider_claim',
+        details: {
+          error: error.message,
+        },
+      });
     }
   }
 
   const normalizedDiagnosisCode = sanitizeDiagnosisCode(diagnosisCodeResult?.diagnosis_code);
 
-  return {
+  const result = {
     ...secondStructured,
     main_sheet: {
       ...(secondStructured?.main_sheet || {}),
@@ -167,6 +203,14 @@ async function processProviderClaim(paths) {
     diagnosis_code: normalizedDiagnosisCode,
     diagnosis_code_reason: diagnosisCodeResult?.reason || null,
   };
+  logEvent({
+    event: 'provider.ocr.completed',
+    message: 'Provider claim OCR processing completed.',
+    status: 'success',
+    action: 'provider_claim',
+    durationMs: Date.now() - startedAt,
+  });
+  return result;
 }
 
 async function processMemberClaim(paths) {
