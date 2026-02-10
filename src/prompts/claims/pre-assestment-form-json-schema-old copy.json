@@ -1,0 +1,313 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "member_declaration_cashless_visit": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "patient_details": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "patient_name": {
+              "type": "string",
+              "description": "Page 1: Row labeled 'Patient name'. Copy EXACTLY as written (handwritten)."
+            },
+            "nrc_or_passport": {
+              "type": "string",
+              "description": "Page 1: Row labeled 'NRC/passport'. Copy EXACTLY as written. Do not reformat. If value is redacted/masked/blackened/blurred (e.g., 'XXXXXX' or hidden), return empty string."
+            },
+            "employer_name": {
+              "type": "string",
+              "description": "Page 1: Row labeled 'Name of employer'. Copy EXACTLY as written. If blank, return \"\"."
+            },
+            "appointment_or_admission_date": {
+              "type": "string",
+              "description": "Page 1: Row labeled 'Appointment/Admission date'. Copy EXACTLY as written (keep punctuation like '.' or '/'). Do not normalize."
+            }
+          },
+          "required": [
+            "patient_name",
+            "nrc_or_passport",
+            "employer_name",
+            "appointment_or_admission_date"
+          ]
+        },
+        "member_signature_section": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Page 3: 'Signature of a member (Individual Life Insured)' + 'Name of a member (Individual Life Insured)' + 'Date'. This is the member/insured signature section.",
+          "properties": {
+            "member_signature_text": {
+              "type": "string",
+              "description": "Page 3: Signature of a member (Individual Life Insured). If only a drawn signature, return \"Signed\". If empty, return \"\"."
+            },
+            "member_name": {
+              "type": "string",
+              "description": "Page 3: Name of a member (Individual Life Insured). Copy EXACTLY as written (can be Burmese)."
+            },
+            "member_signature_date": {
+              "type": "string",
+              "description": "Page 3: Date field beside member signature section. Copy EXACTLY as written (e.g., '19.11.2024'). Do not normalize."
+            }
+          },
+          "required": [
+            "member_signature_text",
+            "member_name",
+            "member_signature_date"
+          ]
+        }
+      },
+      "required": [
+        "patient_details",
+        "member_signature_section"
+      ]
+    },
+
+    "pre_admission_part_1": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "patient_name": {
+          "type": "string",
+          "description": "Part (1) patient info table: Patient name (handwritten). Copy exactly as written."
+        },
+        "policy_no": {
+          "type": "string",
+          "description": "Part (1) patient info table: Policy number / Member number. If the field is blank or not present, return empty string."
+        },
+        "nrc_or_passport": {
+          "type": "string",
+          "description": "Part (1) patient info table: NRC / Passport number. Copy exactly as written. If redacted/masked/blackened/blurred or unreadable, return empty string."
+        },
+        "date_of_birth": {
+          "type": "string",
+          "description": "Part (1) patient info table: Date of birth. Copy exactly as written (do not normalize format)."
+        },
+        "admission_or_appointment_date": {
+          "type": "string",
+          "description": "Part (1) patient info table: Admission/Appointment date (the row where the sample shows 19.11.2024). Copy exactly as written."
+        },
+        "hospital_name": {
+          "type": "string",
+          "description": "Part (1) patient info table: The row after date fields that records hospital/clinic/provider (label is Burmese). Copy exactly what is written in that row. Do NOT take values from adjacent rows (doctor name, Ward/Township). If text looks like job status (e.g., 'On duty'), it belongs to occupation, not hospital_name. If blank/unclear, return empty string."
+        },
+        "doctor_name": {
+          "type": "string",
+          "description": "Part (1) patient info table: This mapped field corresponds to the duty/occupation style row under provider/hospital in this form variant. Copy exactly what is written in that row (example: 'On duty'). Do NOT copy from hospital/clinic/provider row (example: 'Ar Yu'). If blank, return empty string."
+        },
+        "ward_or_township": {
+          "type": "string",
+          "description": "Part (1) patient info table: Ward / Township / locality (row label includes 'Ward' and 'Township'). Copy exactly as written. If blank, return empty string."
+        },
+        "email": {
+          "type": "string",
+          "description": "Part (1) contact section: Email address. Copy exactly (keep punctuation, @, dots). If blank, return empty string."
+        },
+        "phone_number": {
+          "type": "string",
+          "description": "Part (1) contact section: Phone number. Copy exactly as written (do not reformat). If blank, return empty string."
+        }
+      },
+      "required": [
+        "patient_name",
+        "policy_no",
+        "nrc_or_passport",
+        "date_of_birth",
+        "admission_or_appointment_date",
+        "hospital_name",
+        "doctor_name",
+        "ward_or_township",
+        "email",
+        "phone_number"
+      ]
+    },
+
+    "representative_declaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Page 2 (top table): This section is for a representative signing on behalf of the member/patient. DO NOT mix with the 'member (Individual Life Insured)' signature section on Page 3.",
+      "properties": {
+        "signature_present": {
+          "type": "boolean",
+          "description": "Set true if any representative signature/handwriting appears in the signature cell; otherwise false."
+        },
+        "representative_signature_text": {
+          "type": "string",
+          "description": "Page 2: Representative signature cell. If it is only a drawn signature (not readable letters), return \"Signed\". If readable words exist (e.g., 'on behalf of'), copy EXACTLY. If empty, return \"\"."
+        },
+        "representative_on_behalf_text": {
+          "type": "string",
+          "description": "Page 2: Any explicit 'on behalf of' / representative note near the signature area. Copy EXACTLY. If none, return \"\"."
+        },
+        "representative_name": {
+          "type": "string",
+          "description": "Page 2: Name written in the lower-left name cell of the table (below the representative signature row). This is the representative/signer name. Copy EXACTLY. If blank, return \"\"."
+        },
+        "representative_signature_date": {
+          "type": "string",
+          "description": "Page 2: Date written in the right-most date cell. Copy EXACTLY as written (e.g., '19/11/24'). Do not normalize."
+        }
+      },
+      "required": [
+        "signature_present",
+        "representative_signature_text",
+        "representative_on_behalf_text",
+        "representative_name",
+        "representative_signature_date"
+      ]
+    },
+
+    "pre_admission_part_2_medical": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "diagnosis": { "type": "string", "description": "Diagnosis / Provisional Diagnosis." },
+        "condition_related_pregnancy": { "type": "string", "description": "Pregnancy/Childbirth/Infertility/Miscarriage related (Yes/No)." },
+        "condition_related_congenital": { "type": "string", "description": "Congenital/Hereditary disease related (Yes/No)." },
+        "condition_related_drugs_alcohol": { "type": "string", "description": "Drugs/Alcohol abuse related (Yes/No)." },
+        "condition_related_mental": { "type": "string", "description": "Mental/Psychiatric disorder related (Yes/No)." },
+        "condition_related_cosmetic_dental": { "type": "string", "description": "Cosmetic reason/Dental care/Refractive errors correction related (Yes/No)." },
+        "condition_related_hiv": { "type": "string", "description": "AIDS/HIV related (Yes/No)." },
+        "condition_related_none": { "type": "string", "description": "None of the above indicated (Yes/No)." },
+        "clinical_features": { "type": "string", "description": "Details of clinical features." },
+        "first_consultation_date": { "type": "string", "description": "Date of first consultation." },
+        "symptom_onset_date": { "type": "string", "description": "Estimated date of onset of symptoms." },
+        "symptom_duration": { "type": "string", "description": "Duration of symptoms." },
+        "signs_and_symptoms": { "type": "string", "description": "Description of signs and symptoms." },
+        "outpatient_manageable": {
+          "type": "object",
+          "description": "D. Can the condition be managed under Outpatient basis?",
+          "properties": {
+            "yes": {
+              "type": "boolean",
+              "description": "True if YES checkbox is visibly ticked."
+            },
+            "no": {
+              "type": "boolean",
+              "description": "True if NO checkbox is visibly ticked."
+            }
+          },
+          "required": ["yes", "no"]
+        },
+
+        "outpatient_reason_if_yes": {
+          "type": "string",
+          "description": "If YES, reason for hospitalisation. Empty string if blank or not applicable."
+        },
+
+        "previous_consultation_or_hospitalization": {
+          "type": "object",
+          "description": "E. Any previous consultation/treatment/hospitalisation related to this condition.",
+          "properties": {
+            "yes": {
+              "type": "boolean"
+            },
+            "no": {
+              "type": "boolean"
+            }
+          },
+          "required": ["yes", "no"]
+        },
+
+        "previous_reports_required_note": {
+          "type": "string",
+          "description": "Optional note if form states to provide previous medical reports. Usually static text or blank."
+        },
+
+        "surgery_or_procedure_name": {
+          "type": "string",
+          "description": "F. Name of surgery or procedure if applicable."
+        },
+
+        "estimated_length_of_stay": {
+          "type": "string",
+          "description": "G. Estimated length of stay in hospital (e.g., '3 days', '1 week')."
+        },
+
+        "estimated_hospital_cost": {
+          "type": "string",
+          "description": "H. Estimated hospital cost."
+        },
+
+        "injury_accident_datetime": {
+          "type": "string",
+          "description": "I. Date and time of accident if hospitalisation due to injury."
+        },
+
+        "injury_circumstances_and_cause": {
+          "type": "string",
+          "description": "I. Circumstances and cause of injury."
+        },
+
+        "additional_attachments": {
+          "type": "string",
+          "description": "J. Additional attachment listed (medical record, referral letter, police report, biopsy report, etc)."
+        }
+      },
+      "required": [
+        "diagnosis",
+        "condition_related_pregnancy",
+        "condition_related_congenital",
+        "condition_related_drugs_alcohol",
+        "condition_related_mental",
+        "condition_related_cosmetic_dental",
+        "condition_related_hiv",
+        "condition_related_none",
+        "clinical_features",
+        "first_consultation_date",
+        "symptom_onset_date",
+        "symptom_duration",
+        "signs_and_symptoms",
+        "outpatient_manageable",
+        "previous_consultation_or_hospitalization",
+        "outpatient_reason_if_yes",
+        "previous_reports_required_note",
+        "surgery_or_procedure_name",
+        "estimated_length_of_stay",
+        "estimated_hospital_cost",
+        "injury_accident_datetime",
+        "injury_circumstances_and_cause",
+        "additional_attachments"
+      ]
+    },
+
+    "doctor_declaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "doctor_name": { "type": "string", "description": "Doctor's name." },
+        "medical_license_no": { "type": "string", "description": "Medical License No." },
+        "doctor_stamp": { "type": "string", "description": "Stamp of Doctor (if present)." },
+        "declaration_date": { "type": "string", "description": "Date of declaration." }
+      },
+      "required": [
+        "doctor_name",
+        "medical_license_no",
+        "declaration_date"
+      ]
+    },
+
+    "extra_fields": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "label": { "type": "string" },
+          "value": { "type": "string" }
+        },
+        "required": ["label", "value"]
+      }
+    }
+  },
+  "required": [
+    "member_declaration_cashless_visit",
+    "pre_admission_part_1",
+    "representative_declaration",
+    "pre_admission_part_2_medical",
+    "doctor_declaration",
+    "extra_fields"
+  ]
+}
