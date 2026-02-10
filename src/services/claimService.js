@@ -1241,7 +1241,7 @@ async function submitProviderClaimFromPaths(paths, context = {}) {
   const isCompleted =
     /\bcomplete\b/.test(documentStatus) && !/\bincomplete\b/.test(documentStatus);
 
-  console.log('Document Status:', documentStatus, 'Is Completed:', isCompleted);
+  // console.log('Document Status:', documentStatus, 'Is Completed:', isCompleted);
   logEvent({
     event: 'provider.document_check.completed',
     message: isCompleted

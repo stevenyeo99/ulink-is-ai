@@ -188,7 +188,7 @@ async function requestAssistantJsonCompletion({
     Array.isArray(data?.choices) ? data.choices.length : 0
   );
 
-  console.log('Assistant LLM Response:', JSON.stringify(data, null, 2));
+  // console.log('Assistant LLM Response:', JSON.stringify(data, null, 2));
 
   return data;
 }
