@@ -73,13 +73,6 @@ async function processProviderClaim(paths) {
     'claims',
     'claim-provider-claim-system.md'
   );
-  const validatePromptPath = path.join(
-    __dirname,
-    '..',
-    'prompts',
-    'claims',
-    'claim-provider-claim-validate-system.md'
-  );
   const jsonSchemaPath = path.join(
     __dirname,
     '..',
@@ -89,7 +82,6 @@ async function processProviderClaim(paths) {
   );
 
   const systemPrompt = await fs.promises.readFile(systemPromptPath, 'utf8');
-  const validatePrompt = await fs.promises.readFile(validatePromptPath, 'utf8');
   const jsonSchemaRaw = await fs.promises.readFile(jsonSchemaPath, 'utf8');
   const jsonSchema = JSON.parse(jsonSchemaRaw);
 
@@ -136,30 +128,15 @@ async function processProviderClaim(paths) {
     action: 'provider_claim',
   });
 
-  logEvent({
-    event: 'provider.ocr.validation.started',
-    message: 'Provider claim validation pass started.',
-    status: 'start',
-    action: 'provider_claim',
-  });
-  const validateResponse = await requestAssistantJsonCompletion({
-    systemPrompt: validatePrompt,
-    inputJson: structured,
-  });
-  logEvent({
-    event: 'provider.ocr.validation.completed',
-    message: 'Provider claim validation pass completed.',
-    status: 'success',
-    action: 'provider_claim',
-  });
-
-  const secondStructured = extractStructuredJson(validateResponse);
-  logEvent({
-    event: 'provider.ocr.validation.extract.completed',
-    message: 'Provider claim validated structured output parsed.',
-    status: 'success',
-    action: 'provider_claim',
-  });
+  // COMMENT FOR DEMO PURPOSE:
+  // Skip second validation LLM pass and use first-pass structured JSON directly.
+  const secondStructured = structured;
+  // logEvent({
+  //   event: 'provider.ocr.validation.extract.completed',
+  //   message: 'Provider claim uses first-pass structured output (validation pass skipped).',
+  //   status: 'success',
+  //   action: 'provider_claim',
+  // });
 
   let diagnosisCodeResult = null;
   const diagnosisDescription = secondStructured?.main_sheet?.diagnosis_description || null;

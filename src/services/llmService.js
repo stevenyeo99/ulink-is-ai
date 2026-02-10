@@ -218,35 +218,158 @@ function extractStructuredJson(llmResponse) {
     throw new Error('LLM response contained no choices');
   }
 
-  const extractFirstJsonObject = (text) => {
+  const stripCodeFences = (text) => {
     if (typeof text !== 'string') return text;
-    const start = text.indexOf('{');
+    const trimmed = text.trim();
+    const fenceMatch = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+    return fenceMatch ? fenceMatch[1].trim() : trimmed;
+  };
+
+  const extractFirstBalancedJson = (text) => {
+    if (typeof text !== 'string') return text;
+
+    const findStart = () => {
+      const objectStart = text.indexOf('{');
+      const arrayStart = text.indexOf('[');
+      if (objectStart === -1) return arrayStart;
+      if (arrayStart === -1) return objectStart;
+      return Math.min(objectStart, arrayStart);
+    };
+
+    const start = findStart();
     if (start === -1) return text;
+
+    const openChar = text[start];
+    const closeChar = openChar === '{' ? '}' : ']';
     let depth = 0;
+    let inString = false;
+    let escaped = false;
+
     for (let i = start; i < text.length; i += 1) {
       const char = text[i];
-      if (char === '{') depth += 1;
-      if (char === '}') {
+
+      if (inString) {
+        if (escaped) {
+          escaped = false;
+          continue;
+        }
+        if (char === '\\') {
+          escaped = true;
+          continue;
+        }
+        if (char === '"') {
+          inString = false;
+        }
+        continue;
+      }
+
+      if (char === '"') {
+        inString = true;
+        continue;
+      }
+
+      if (char === openChar) {
+        depth += 1;
+        continue;
+      }
+
+      if (char === closeChar) {
         depth -= 1;
         if (depth === 0) {
           return text.slice(start, i + 1);
         }
       }
     }
-    return text;
+
+    return text.slice(start);
+  };
+
+  const removeTrailingCommas = (text) => {
+    if (typeof text !== 'string') return text;
+    return text.replace(/,\s*([}\]])/g, '$1');
+  };
+
+  const escapeRawControlCharsInStrings = (text) => {
+    if (typeof text !== 'string') return text;
+    let output = '';
+    let inString = false;
+    let escaped = false;
+
+    for (let i = 0; i < text.length; i += 1) {
+      const char = text[i];
+
+      if (inString) {
+        if (escaped) {
+          output += char;
+          escaped = false;
+          continue;
+        }
+        if (char === '\\') {
+          output += char;
+          escaped = true;
+          continue;
+        }
+        if (char === '"') {
+          output += char;
+          inString = false;
+          continue;
+        }
+        if (char === '\n') {
+          output += '\\n';
+          continue;
+        }
+        if (char === '\r') {
+          output += '\\r';
+          continue;
+        }
+        if (char === '\t') {
+          output += '\\t';
+          continue;
+        }
+        output += char;
+        continue;
+      }
+
+      if (char === '"') {
+        inString = true;
+      }
+      output += char;
+    }
+
+    return output;
   };
 
   const parseJsonWithRepair = (value) => {
     const text = typeof value === 'string' ? value.trim() : value;
-    const normalized = extractFirstJsonObject(text);
-    try {
-      return JSON.parse(normalized);
-    } catch (error) {
-      const repaired = repairUnescapedQuotes(normalized);
-      console.log('Error parsing JSON:', error);
-      console.log('Repaired JSON:', repaired);
-      return JSON.parse(repaired);
+    const normalized = extractFirstBalancedJson(stripCodeFences(text));
+    const attempts = [];
+
+    if (typeof normalized === 'string') {
+      attempts.push(normalized);
+      attempts.push(removeTrailingCommas(normalized));
+      attempts.push(escapeRawControlCharsInStrings(normalized));
+      attempts.push(escapeRawControlCharsInStrings(removeTrailingCommas(normalized)));
+      attempts.push(repairUnescapedQuotes(normalized));
+      attempts.push(removeTrailingCommas(repairUnescapedQuotes(normalized)));
+      attempts.push(escapeRawControlCharsInStrings(removeTrailingCommas(repairUnescapedQuotes(normalized))));
+    } else {
+      attempts.push(normalized);
     }
+
+    let lastError = null;
+    for (const candidate of attempts) {
+      try {
+        return typeof candidate === 'string' ? JSON.parse(candidate) : candidate;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    if (typeof normalized === 'string') {
+      console.log('Error parsing JSON:', lastError);
+      console.log('Repaired JSON:', attempts[attempts.length - 1]);
+    }
+    throw lastError || new Error('Unable to parse LLM JSON response');
   };
 
   const content = choice.message?.content;
