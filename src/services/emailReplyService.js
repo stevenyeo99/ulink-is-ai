@@ -129,7 +129,7 @@ async function buildMissingDocsTemplateBody({ senderName, missingDocs, type }) {
 
   const providerNote =
     type === 'provider_claim'
-      ? 'Note: We only process attachments from the most recent email in the thread. Please re-attach all required documents in a single reply.'
+      ? null
       : null;
 
   if (!template) {
@@ -635,7 +635,7 @@ function buildMissingAttachmentsBody(type, senderName) {
   const label = labelMap[type] || 'request';
   const providerNote =
     type === 'provider_claim'
-      ? 'Note: We only process attachments from the most recent email in the thread. Please re-attach all required documents in a single reply.'
+      ? null
       : null;
   return [
     buildGreeting(senderName),
