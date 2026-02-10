@@ -20,6 +20,18 @@ function sanitizeDiagnosisCode(value) {
   return cleaned || null;
 }
 
+function isNonEmptyString(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function isLikelyOccupationStatus(value) {
+  if (!isNonEmptyString(value)) {
+    return false;
+  }
+  const normalized = value.trim().toLowerCase();
+  return /\bon\s*duty\b/.test(normalized) || /\boccupation\b/.test(normalized);
+}
+
 const providerClaimBenefitSetSchema = {
   name: 'provider_claim_benefit_set',
   schema: {
@@ -388,9 +400,14 @@ async function processPreAssessmentForm(paths) {
   const extractedResult = extractStructuredJson(llmResponse);
 
   const extractedHospitalName = extractedResult?.pre_admission_part_1?.hospital_name;
+  const extractedDoctorName = extractedResult?.pre_admission_part_1?.doctor_name;
+  const hospitalNameLooksWrong = isLikelyOccupationStatus(extractedHospitalName);
+  const shouldRunHospitalFallback = requiredFieldsResult?.hospital_name_detected && (
+    !isNonEmptyString(extractedHospitalName) || hospitalNameLooksWrong
+  );
+
   if (
-    requiredFieldsResult?.hospital_name_detected &&
-    (!extractedHospitalName || !String(extractedHospitalName).trim())
+    shouldRunHospitalFallback
   ) {
     try {
       const hospitalFallbackPrompt = [
@@ -437,6 +454,58 @@ async function processPreAssessmentForm(paths) {
       }
     } catch (error) {
       console.log(`[pre_assestment_form] hospital_name fallback failed: ${error.message}`);
+    }
+  }
+
+  const shouldRunDoctorFallback =
+    !isNonEmptyString(extractedDoctorName) ||
+    (hospitalNameLooksWrong && !isLikelyOccupationStatus(extractedDoctorName));
+
+  if (shouldRunDoctorFallback) {
+    try {
+      const doctorFallbackPrompt = [
+        'You are extracting one field from a pre-admission form image set.',
+        'Return only JSON.',
+        'Target field: pre_admission_part_1.doctor_name',
+        'Rules:',
+        '- Read only the Part (1) patient-info table row mapped to doctor_name.',
+        '- In this form mapping, doctor_name is the occupation/duty style row and may contain values like "On duty".',
+        '- Do NOT copy from hospital/clinic/provider row (e.g., "Ar Yu").',
+        '- If truly unreadable, return empty string.',
+      ].join('\n');
+
+      const doctorFallbackResponse = await requestVisionSchemaCompletion({
+        base64Images,
+        systemPrompt: doctorFallbackPrompt,
+        jsonSchema: {
+          name: 'pre_assessment_doctor_name_fallback',
+          schema: {
+            type: 'object',
+            additionalProperties: false,
+            properties: {
+              doctor_name: { type: 'string' },
+              reason: { type: 'string' },
+            },
+            required: ['doctor_name', 'reason'],
+          },
+        },
+        model: preAssessmentModel,
+      });
+
+      const doctorFallbackResult = extractStructuredJson(doctorFallbackResponse);
+      const fallbackDoctorName = doctorFallbackResult?.doctor_name;
+      if (isNonEmptyString(fallbackDoctorName)) {
+        extractedResult.pre_admission_part_1 = {
+          ...(extractedResult?.pre_admission_part_1 || {}),
+          doctor_name: String(fallbackDoctorName).trim(),
+        };
+        console.log('[pre_assestment_form] doctor_name fallback applied', {
+          doctor_name: String(fallbackDoctorName).trim(),
+          reason: doctorFallbackResult?.reason || null,
+        });
+      }
+    } catch (error) {
+      console.log(`[pre_assestment_form] doctor_name fallback failed: ${error.message}`);
     }
   }
 

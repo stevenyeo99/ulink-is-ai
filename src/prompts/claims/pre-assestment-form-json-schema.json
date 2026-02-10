@@ -91,11 +91,11 @@
         },
         "hospital_name": {
           "type": "string",
-          "description": "Part (1) patient info table: The row after date fields that records hospital/clinic/provider (label is Burmese). Copy exactly what is written in that row. Do NOT take values from adjacent rows (Occupation, Ward/Township). If text looks like job status (e.g., 'On duty'), it belongs to occupation, not hospital_name. If blank/unclear, return empty string."
+          "description": "Part (1) patient info table: The row after date fields that records hospital/clinic/provider (label is Burmese). Copy exactly what is written in that row. Do NOT take values from adjacent rows (doctor name, Ward/Township). If text looks like job status (e.g., 'On duty'), it belongs to occupation, not hospital_name. If blank/unclear, return empty string."
         },
-        "occupation": {
+        "doctor_name": {
           "type": "string",
-          "description": "Part (1) patient info table: Occupation / job (label is Burmese). Copy exactly what is written in that row. If blank, return empty string."
+          "description": "Part (1) patient info table: This mapped field corresponds to the duty/occupation style row under provider/hospital in this form variant. Copy exactly what is written in that row (example: 'On duty'). Do NOT copy from hospital/clinic/provider row (example: 'Ar Yu'). If blank, return empty string."
         },
         "ward_or_township": {
           "type": "string",
@@ -117,7 +117,7 @@
         "date_of_birth",
         "admission_or_appointment_date",
         "hospital_name",
-        "occupation",
+        "doctor_name",
         "ward_or_township",
         "email",
         "phone_number"

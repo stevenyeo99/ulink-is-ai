@@ -29,6 +29,10 @@ Field disambiguation rules (strict):
     unless the same value is clearly written in the provider/hospital field row.
   - If short handwritten provider text is present (e.g., "Ar Yu"), copy it exactly as written.
   - Do NOT normalize or guess spelling (e.g., do not convert "Ar Yu" to other variants).
-  - Do NOT copy value from adjacent rows such as Occupation or Ward/Township.
-  - If the candidate text looks like an occupation/job status (e.g., "On duty"), it is NOT hospital_name.
+  - Do NOT copy value from adjacent rows such as doctor name or Occupation or Ward/Township.
+  - If the candidate text looks like an doctor name/occupation/job status (e.g., "On duty"), it is NOT hospital_name.
   - If provider row is unclear, return "" rather than borrowing nearby row values.
+- pre_admission_part_1.doctor_name:
+  - In this form mapping, this field corresponds to the duty/occupation style row in Part 1.
+  - Values like "On duty" are valid and should be copied exactly.
+  - Do NOT copy from the hospital/clinic/provider row (e.g., "Ar Yu").
