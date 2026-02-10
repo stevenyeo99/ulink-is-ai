@@ -369,6 +369,7 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
       user: config.user,
       pass: config.password,
     },
+    logger: false,
   });
 
   let connected = false;

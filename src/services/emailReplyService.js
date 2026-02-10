@@ -532,6 +532,7 @@ async function appendToSentMailbox(rawMessage) {
       user: imapConfig.user,
       pass: imapConfig.password,
     },
+    logger: false,
   });
 
   try {
