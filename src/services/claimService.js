@@ -307,35 +307,36 @@ async function processPreAssessmentForm(paths) {
     base64Images.push(imageBuffer.toString('base64'));
   }
 
-  const classifyResponse = await requestVisionSchemaCompletion({
-    base64Images,
-    systemPrompt: classifyPrompt,
-    jsonSchema: {
-      name: 'pre_assessment_form_classify',
-      schema: {
-        type: 'object',
-        additionalProperties: false,
-        properties: {
-          is_pre_admission_form: { type: 'boolean' },
-          reason: { type: 'string' },
-        },
-        required: ['is_pre_admission_form', 'reason'],
-      },
-    },
-    model: preAssessmentModel,
-  });
-  const classifyResult = extractStructuredJson(classifyResponse);
-  console.log('[pre_assestment_form] classify result', classifyResult);
-  if (!classifyResult?.is_pre_admission_form) {
-    const error = new Error('Missing required document: Pre-Admission Form for LOG');
-    error.status = 400;
-    error.code = 'MISSING_DOCS';
-    error.detail = {
-      reason: classifyResult?.reason || null,
-      missing_docs: 'Pre-Admission Form for LOG',
-    };
-    throw error;
-  }
+  // COMMENT FOR FASTER, DUE DEMO PURPOSE
+  // const classifyResponse = await requestVisionSchemaCompletion({
+  //   base64Images,
+  //   systemPrompt: classifyPrompt,
+  //   jsonSchema: {
+  //     name: 'pre_assessment_form_classify',
+  //     schema: {
+  //       type: 'object',
+  //       additionalProperties: false,
+  //       properties: {
+  //         is_pre_admission_form: { type: 'boolean' },
+  //         reason: { type: 'string' },
+  //       },
+  //       required: ['is_pre_admission_form', 'reason'],
+  //     },
+  //   },
+  //   model: preAssessmentModel,
+  // });
+  // const classifyResult = extractStructuredJson(classifyResponse);
+  // console.log('[pre_assestment_form] classify result', classifyResult);
+  // if (!classifyResult?.is_pre_admission_form) {
+  //   const error = new Error('Missing required document: Pre-Admission Form for LOG');
+  //   error.status = 400;
+  //   error.code = 'MISSING_DOCS';
+  //   error.detail = {
+  //     reason: classifyResult?.reason || null,
+  //     missing_docs: 'Pre-Admission Form for LOG',
+  //   };
+  //   throw error;
+  // }
 
   const requiredFieldsResponse = await requestVisionSchemaCompletion({
     base64Images,
