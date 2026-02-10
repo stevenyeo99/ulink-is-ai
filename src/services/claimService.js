@@ -7,6 +7,7 @@ const {
 } = require('./llmService');
 const { convertFilesToJpeg300ppi, convertFilesToPng300dpi } = require('./imageService');
 const { postMemberInfoByPolicy, postClaimSubmission, postClaimStatus, downloadClaimFile } = require('./iasService');
+const { logEvent } = require('./logEventService');
 
 function sanitizeDiagnosisCode(value) {
   if (typeof value !== 'string') {
@@ -246,12 +247,27 @@ async function processProviderClaimBenefitSet(paths, benefitList) {
   return extractStructuredJson(llmResponse);
 }
 
-async function processPreAssessmentForm(paths) {
+async function processPreAssessmentForm(paths, context = {}) {
   if (!Array.isArray(paths) || paths.length === 0) {
     throw new Error('paths must be a non-empty array of file paths');
   }
 
-  console.log('[pre_assestment_form] start processPreAssessmentForm', { pathCount: paths.length });
+  const startedAt = Date.now();
+  const requestId = context.requestId || null;
+  const emailUid = context.emailUid || null;
+  const action = context.action || 'pre_assestment_form';
+
+  logEvent({
+    event: 'preaf.processing.started',
+    message: 'Pre-assessment document processing has started.',
+    status: 'start',
+    requestId,
+    emailUid,
+    action,
+    details: {
+      path_count: paths.length,
+    },
+  });
 
   const systemPromptPath = path.join(
     __dirname,
@@ -290,14 +306,34 @@ async function processPreAssessmentForm(paths) {
 
   const conversions = await convertFilesToPng300dpi(paths);
   const successfulConversions = conversions.filter((item) => item.status === 'success' && item.outputPath);
-  console.log('[pre_assestment_form] image conversions', {
-    total: conversions.length,
-    success: successfulConversions.length,
+  logEvent({
+    event: 'preaf.image_conversion.completed',
+    message: 'Document pages were converted to images for OCR.',
+    status: 'success',
+    requestId,
+    emailUid,
+    action,
+    details: {
+      total: conversions.length,
+      success: successfulConversions.length,
+      failed: Math.max(conversions.length - successfulConversions.length, 0),
+    },
   });
 
   if (successfulConversions.length === 0) {
     const error = new Error('No successful image conversions available for LLM processing');
     error.detail = conversions;
+    logEvent({
+      event: 'preaf.image_conversion.failed',
+      message: 'Image conversion failed. OCR could not continue.',
+      status: 'error',
+      requestId,
+      emailUid,
+      action,
+      details: {
+        conversion_count: conversions.length,
+      },
+    });
     throw error;
   }
 
@@ -371,7 +407,6 @@ async function processPreAssessmentForm(paths) {
     model: preAssessmentModel,
   });
   const requiredFieldsResult = extractStructuredJson(requiredFieldsResponse);
-  console.log('[pre_assestment_form] required fields result', requiredFieldsResult);
   const missingFields = [];
   if (!requiredFieldsResult?.patient_name_detected) missingFields.push('patient_name');
   if (!requiredFieldsResult?.nrc_or_passport_detected) missingFields.push('nrc_or_passport');
@@ -379,6 +414,18 @@ async function processPreAssessmentForm(paths) {
   if (!requiredFieldsResult?.hospital_name_detected) missingFields.push('hospital_name');
   if (!requiredFieldsResult?.admission_date_detected) missingFields.push('admission_date');
   if (!requiredFieldsResult?.signature_detected) missingFields.push('signature');
+  logEvent({
+    event: 'preaf.required_fields.checked',
+    message: 'Required fields check completed.',
+    status: missingFields.length > 0 ? 'warning' : 'success',
+    requestId,
+    emailUid,
+    action,
+    details: {
+      missing_fields: missingFields,
+      reason: requiredFieldsResult?.reason || null,
+    },
+  });
 
   if (missingFields.length > 0) {
     const error = new Error('Missing required fields for pre-assessment form OCR');
@@ -388,6 +435,15 @@ async function processPreAssessmentForm(paths) {
       reason: requiredFieldsResult?.reason || null,
       missing_fields: missingFields,
     };
+    logEvent({
+      event: 'preaf.required_fields.missing',
+      message: 'Pre-assessment required fields are incomplete.',
+      status: 'warning',
+      requestId,
+      emailUid,
+      action,
+      details: error.detail,
+    });
     throw error;
   }
 
@@ -397,8 +453,15 @@ async function processPreAssessmentForm(paths) {
     jsonSchema,
     model: preAssessmentModel,
   });
-  console.log('[pre_assestment_form] OCR extraction complete');
   const extractedResult = extractStructuredJson(llmResponse);
+  logEvent({
+    event: 'preaf.ocr.completed',
+    message: 'Pre-assessment OCR extraction completed.',
+    status: 'success',
+    requestId,
+    emailUid,
+    action,
+  });
 
   const extractedHospitalName = extractedResult?.pre_admission_part_1?.hospital_name;
   const extractedDoctorName = extractedResult?.pre_admission_part_1?.doctor_name;
@@ -448,13 +511,30 @@ async function processPreAssessmentForm(paths) {
           ...(extractedResult?.pre_admission_part_1 || {}),
           hospital_name: String(fallbackHospitalName).trim(),
         };
-        console.log('[pre_assestment_form] hospital_name fallback applied', {
-          hospital_name: String(fallbackHospitalName).trim(),
-          reason: hospitalFallbackResult?.reason || null,
+        logEvent({
+          event: 'preaf.fallback.hospital_name.applied',
+          message: 'Hospital name fallback extraction was applied.',
+          status: 'success',
+          requestId,
+          emailUid,
+          action,
+          details: {
+            reason: hospitalFallbackResult?.reason || null,
+          },
         });
       }
     } catch (error) {
-      console.log(`[pre_assestment_form] hospital_name fallback failed: ${error.message}`);
+      logEvent({
+        event: 'preaf.fallback.hospital_name.failed',
+        message: 'Hospital name fallback extraction failed.',
+        status: 'warning',
+        requestId,
+        emailUid,
+        action,
+        details: {
+          error: error.message,
+        },
+      });
     }
   }
 
@@ -500,16 +580,42 @@ async function processPreAssessmentForm(paths) {
           ...(extractedResult?.pre_admission_part_1 || {}),
           doctor_name: String(fallbackDoctorName).trim(),
         };
-        console.log('[pre_assestment_form] doctor_name fallback applied', {
-          doctor_name: String(fallbackDoctorName).trim(),
-          reason: doctorFallbackResult?.reason || null,
+        logEvent({
+          event: 'preaf.fallback.doctor_name.applied',
+          message: 'Doctor name fallback extraction was applied.',
+          status: 'success',
+          requestId,
+          emailUid,
+          action,
+          details: {
+            reason: doctorFallbackResult?.reason || null,
+          },
         });
       }
     } catch (error) {
-      console.log(`[pre_assestment_form] doctor_name fallback failed: ${error.message}`);
+      logEvent({
+        event: 'preaf.fallback.doctor_name.failed',
+        message: 'Doctor name fallback extraction failed.',
+        status: 'warning',
+        requestId,
+        emailUid,
+        action,
+        details: {
+          error: error.message,
+        },
+      });
     }
   }
 
+  logEvent({
+    event: 'preaf.processing.completed',
+    message: 'Pre-assessment processing completed successfully.',
+    status: 'success',
+    requestId,
+    emailUid,
+    action,
+    durationMs: Date.now() - startedAt,
+  });
   return extractedResult;
 }
 
@@ -1109,7 +1215,23 @@ async function processReimbursementClaimFromPaths(paths, options = {}) {
   };
 }
 
-async function submitProviderClaimFromPaths(paths) {
+async function submitProviderClaimFromPaths(paths, context = {}) {
+  const startedAt = Date.now();
+  const requestId = context.requestId || null;
+  const emailUid = context.emailUid || null;
+  const action = context.action || 'provider_claim';
+
+  logEvent({
+    event: 'provider.processing.started',
+    message: 'Provider claim processing has started.',
+    status: 'start',
+    requestId,
+    emailUid,
+    action,
+    details: {
+      path_count: Array.isArray(paths) ? paths.length : 0,
+    },
+  });
   console.log('Submitting provider claim for paths:', paths);
   const providerClaimResult = await processProviderClaim(paths);
 
@@ -1120,6 +1242,20 @@ async function submitProviderClaimFromPaths(paths) {
     /\bcomplete\b/.test(documentStatus) && !/\bincomplete\b/.test(documentStatus);
 
   console.log('Document Status:', documentStatus, 'Is Completed:', isCompleted);
+  logEvent({
+    event: 'provider.document_check.completed',
+    message: isCompleted
+      ? 'Required provider claim documents are complete.'
+      : 'Provider claim documents are incomplete.',
+    status: isCompleted ? 'success' : 'warning',
+    requestId,
+    emailUid,
+    action,
+    details: {
+      status: documentSourceSummary.status || null,
+      missing_docs: documentSourceSummary.missing_docs || null,
+    },
+  });
   
   if (!isCompleted) {
     const missingDocs = documentSourceSummary.missing_docs || 'Not available';
@@ -1132,6 +1268,15 @@ async function submitProviderClaimFromPaths(paths) {
       missing_docs: documentSourceSummary.missing_docs || null,
     };
     error.code = 'MISSING_DOCUMENTS';
+    logEvent({
+      event: 'provider.document_check.failed',
+      message: 'Provider claim cannot continue because required documents are missing.',
+      status: 'warning',
+      requestId,
+      emailUid,
+      action,
+      details: error.detail,
+    });
     throw error;
   }
   const mainSheet = providerClaimResult?.main_sheet || {};
@@ -1155,10 +1300,26 @@ async function submitProviderClaimFromPaths(paths) {
     memberNrc,
     meplEffDate: formattedMeplEffDate,
   });
+  logEvent({
+    event: 'provider.member_lookup.completed',
+    message: 'Member plan lookup completed.',
+    status: 'success',
+    requestId,
+    emailUid,
+    action,
+  });
 
   if (!memberInfoData || !Array.isArray(memberInfoData?.payload?.memberPlans) || memberInfoData.payload.memberPlans.length === 0) {
     const error = new Error('Member plan record not found');
     error.code = 'MEMBER_PLAN_NOT_FOUND';
+    logEvent({
+      event: 'provider.member_lookup.failed',
+      message: 'Member plan record was not found.',
+      status: 'warning',
+      requestId,
+      emailUid,
+      action,
+    });
     throw error;
   }
 
@@ -1175,12 +1336,33 @@ async function submitProviderClaimFromPaths(paths) {
     paths,
     memberPlanGetBenefitList.ias.benefitList
   );
+  logEvent({
+    event: 'provider.benefit_set.completed',
+    message: 'Benefit type and head mapping completed.',
+    status: 'success',
+    requestId,
+    emailUid,
+    action,
+    details: {
+      benefit_type_code: benefitSet?.benefit_type_code || null,
+      benefit_head_code: benefitSet?.benefit_head_code || null,
+    },
+  });
 
   mainSheet.benefit_type = benefitSet?.benefit_type_code || mainSheet.benefit_type;
   mainSheet.benefit_head = benefitSet?.benefit_head_code || mainSheet.benefit_head;
 
   const providerClaimPayload = buildIasProviderClaimPayload(mainSheet, memberInfoData);
   const iasResponse = await postClaimSubmission(providerClaimPayload);
+  logEvent({
+    event: 'provider.submission.completed',
+    message: 'Provider claim was submitted to IAS.',
+    status: 'success',
+    requestId,
+    emailUid,
+    action,
+    durationMs: Date.now() - startedAt,
+  });
 
   return {
     providerClaimResult,

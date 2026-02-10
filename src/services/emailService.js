@@ -23,8 +23,15 @@ const {
   replyReimbursementClaim,
   replySystemError,
 } = require('./emailReplyService');
+const { logEvent } = require('./logEventService');
 
 const debug = createDebug('app:service:email');
+
+function createRequestId(message) {
+  const uid = message?.uid || 'unknown';
+  const token = Math.random().toString(36).slice(2, 8);
+  return `email-${uid}-${Date.now().toString(36)}-${token}`;
+}
 
 function parseBoolean(value, defaultValue = false) {
   if (value === undefined || value === null) {
@@ -381,6 +388,15 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
 
     lock = await client.getMailboxLock(mailbox);
     const unseenUids = await client.search({ seen: false });
+    logEvent({
+      event: 'email.poll.complete',
+      message: 'Checked inbox for unseen emails.',
+      status: 'success',
+      details: {
+        mailbox,
+        unseen_count: unseenUids.length,
+      },
+    });
 
     if (!unseenUids.length) {
       return [];
@@ -408,11 +424,46 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
     for (const message of limited) {
       let processed = false;
       let decisionSummary = null;
+      const requestId = createRequestId(message);
+      const messageStartedAt = Date.now();
 
       const processMessage = async () => {
         let localProcessed = false;
         const parsed = await simpleParser(message.source);
+        logEvent({
+          event: 'email.message.parsed',
+          message: 'We received a new email and started processing it.',
+          status: 'start',
+          requestId,
+          emailUid: message.uid,
+          details: {
+            subject: parsed.subject || message?.envelope?.subject || null,
+            from: formatAddressOnlyList(parsed.from?.value),
+            has_attachments: Array.isArray(parsed.attachments) && parsed.attachments.length > 0,
+          },
+        });
         const storage = await saveParsedMessage(config.importBaseDir, message, parsed);
+        const attachmentCount = Array.isArray(storage.attachments) ? storage.attachments.length : 0;
+        const supportedCount = Array.isArray(storage.supportedAttachmentPaths)
+          ? storage.supportedAttachmentPaths.length
+          : 0;
+        logEvent({
+          event: 'email.attachments.saved',
+          message: `${attachmentCount} attachment(s) were downloaded and stored.`,
+          status: 'success',
+          requestId,
+          emailUid: message.uid,
+          details: {
+            output_dir: storage.outputDir,
+            attachment_count: attachmentCount,
+            supported_attachment_count: supportedCount,
+            attachments: (storage.attachments || []).map((item) => ({
+              filename: item.filename || null,
+              contentType: item.contentType || null,
+              size: item.size || null,
+            })),
+          },
+        });
         const envelope = message.envelope || {};
 
         try {
@@ -425,12 +476,34 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
             attachments: storage.attachments,
           };
 
+          logEvent({
+            event: 'flow.decision.started',
+            message: 'System is identifying which processing flow applies to this email.',
+            status: 'start',
+            requestId,
+            emailUid: message.uid,
+            details: {
+              subject: decisionInput.subject,
+            },
+          });
           const { decision, rawResponse } = await decideEmailAction(decisionInput);
           console.log('[email-decision]', {
             subject: decisionInput.subject,
             action: decision?.action || null,
             reason: decision?.reason || null,
             confidence: decision?.confidence || null,
+          });
+          logEvent({
+            event: 'flow.decision.completed',
+            message: `This email was identified as ${decision?.action || 'no_action'}.`,
+            status: 'success',
+            requestId,
+            emailUid: message.uid,
+            action: decision?.action || null,
+            details: {
+              reason: decision?.reason || null,
+              confidence: decision?.confidence || null,
+            },
           });
           decisionSummary = decision;
           const senderName = getSenderName(parsed.from?.value);
@@ -453,6 +526,17 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
           }
 
           if (decision.action === 'pre_assestment_form') {
+            logEvent({
+              event: 'flow.pre_assessment.started',
+              message: 'Starting pre-assessment form processing.',
+              status: 'start',
+              requestId,
+              emailUid: message.uid,
+              action: decision.action,
+              details: {
+                supported_attachment_count: storage.supportedAttachmentPaths.length,
+              },
+            });
             if (!storage.supportedAttachmentPaths.length) {
               const replyResult = await replyMissingAttachments({
                 subject: parsed.subject || envelope.subject || null,
@@ -469,13 +553,22 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
                   `${JSON.stringify({ type: 'pre_assestment_form_missing_attachments', ...replyResult }, null, 2)}\n`
                 );
               }
+              logEvent({
+                event: 'flow.pre_assessment.missing_attachments',
+                message: 'No supported attachments were found for pre-assessment processing.',
+                status: 'warning',
+                requestId,
+                emailUid: message.uid,
+                action: decision.action,
+              });
               localProcessed = true;
               return { storage, envelope, processed: localProcessed };
             }
 
             try {
               const preAssessmentResult = await processPreAssessmentForm(
-                storage.supportedAttachmentPaths
+                storage.supportedAttachmentPaths,
+                { requestId, emailUid: message.uid, action: decision.action }
               );
               let pafPath = null;
 
@@ -503,6 +596,14 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
                   `${JSON.stringify({ type: 'pre_assestment_form', ...replyResult }, null, 2)}\n`
                 );
               }
+              logEvent({
+                event: 'flow.pre_assessment.completed',
+                message: 'Pre-assessment form processing completed and reply was prepared.',
+                status: 'success',
+                requestId,
+                emailUid: message.uid,
+                action: decision.action,
+              });
             } catch (error) {
               const isMissingDocs = error?.code === 'MISSING_DOCS';
               const isMissingRequiredFields = error?.code === 'MISSING_REQUIRED_FIELDS';
@@ -556,10 +657,34 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
                   `${JSON.stringify({ type: replyType, ...replyResult }, null, 2)}\n`
                 );
               }
+              logEvent({
+                event: 'flow.pre_assessment.failed',
+                message: 'Pre-assessment flow finished with missing items or system error.',
+                status: isMissingDocs || isMissingRequiredFields ? 'warning' : 'error',
+                requestId,
+                emailUid: message.uid,
+                action: decision.action,
+                details: {
+                  error_code: error?.code || null,
+                  missing_docs: missingDocs,
+                  reason: error?.detail?.reason || null,
+                },
+              });
               localProcessed = true;
               return { storage, envelope, processed: localProcessed };
             }
           } else if (decision.action === 'provider_claim') {
+            logEvent({
+              event: 'flow.provider_claim.started',
+              message: 'Starting provider claim processing.',
+              status: 'start',
+              requestId,
+              emailUid: message.uid,
+              action: decision.action,
+              details: {
+                supported_attachment_count: storage.supportedAttachmentPaths.length,
+              },
+            });
             if (!storage.supportedAttachmentPaths.length) {
               const replyResult = await replyMissingAttachments({
                 subject: parsed.subject || envelope.subject || null,
@@ -576,12 +701,24 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
                   `${JSON.stringify({ type: 'provider_claim_missing_attachments', ...replyResult }, null, 2)}\n`
                 );
               }
+              logEvent({
+                event: 'flow.provider_claim.missing_attachments',
+                message: 'No supported attachments were found for provider claim processing.',
+                status: 'warning',
+                requestId,
+                emailUid: message.uid,
+                action: decision.action,
+              });
               localProcessed = true;
               return { storage, envelope, processed: localProcessed };
             }
             try {
               const { providerClaimResult, providerClaimPayload, iasResponse, benefitSet } =
-                await submitProviderClaimFromPaths(storage.supportedAttachmentPaths);
+                await submitProviderClaimFromPaths(storage.supportedAttachmentPaths, {
+                  requestId,
+                  emailUid: message.uid,
+                  action: decision.action,
+                });
               let payloadPath = null;
               let ocrPath = null;
               let excelPath = null;
@@ -623,6 +760,14 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
                   `${JSON.stringify({ type: 'provider_claim', ...replyResult }, null, 2)}\n`
                 );
               }
+              logEvent({
+                event: 'flow.provider_claim.completed',
+                message: 'Provider claim processing completed and reply was prepared.',
+                status: 'success',
+                requestId,
+                emailUid: message.uid,
+                action: decision.action,
+              });
             } catch (error) {
               let replyFn = replySystemError;
               let replyType = 'provider_claim_system_error';
@@ -651,6 +796,20 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
                   `${JSON.stringify({ type: replyType, ...replyResult }, null, 2)}\n`
                 );
               }
+              logEvent({
+                event: 'flow.provider_claim.failed',
+                message: 'Provider claim flow finished with missing items or system error.',
+                status: error?.code === 'MISSING_DOCUMENTS' || error?.code === 'MEMBER_PLAN_NOT_FOUND'
+                  ? 'warning'
+                  : 'error',
+                requestId,
+                emailUid: message.uid,
+                action: decision.action,
+                details: {
+                  error_code: error?.code || null,
+                  missing_docs: missingDocs,
+                },
+              });
               localProcessed = true;
               return { storage, envelope, processed: localProcessed };
             }
@@ -784,6 +943,16 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
           localProcessed = true;
         } catch (error) {
           debug('Email processing failed for uid %s: %s', message.uid, error.message);
+          logEvent({
+            event: 'email.processing.failed',
+            message: 'Email processing failed unexpectedly.',
+            status: 'error',
+            requestId,
+            emailUid: message.uid,
+            details: {
+              error: error.message,
+            },
+          });
         }
 
         return { storage, envelope, processed: localProcessed };
@@ -821,6 +990,21 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
         storedPath: storage.outputDir,
         decision: decisionSummary,
         processed,
+      });
+      logEvent({
+        event: 'email.processing.completed',
+        message: processed
+          ? 'Email processing completed successfully.'
+          : 'Email was reviewed but not fully processed.',
+        status: processed ? 'success' : 'warning',
+        requestId,
+        emailUid: message.uid,
+        action: decisionSummary?.action || null,
+        durationMs: Date.now() - messageStartedAt,
+        details: {
+          stored_path: storage.outputDir,
+          decision: decisionSummary?.action || null,
+        },
       });
 
       if (processed) {

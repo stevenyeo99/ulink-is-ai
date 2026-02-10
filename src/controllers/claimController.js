@@ -22,6 +22,7 @@ const {
 const createDebug = require('debug');
 const os = require('os');
 const path = require('path');
+const { logEvent } = require('../services/logEventService');
 
 const debug = createDebug('app:controller:claim');
 
@@ -33,12 +34,41 @@ async function providerClaimJson(req, res) {
   }
 
   debug('Received provider-claim OCR request for %d paths', paths.length);
+  const requestId = `api-provider-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  logEvent({
+    event: 'api.provider.request.received',
+    message: 'Received API request for provider claim OCR extraction.',
+    status: 'start',
+    requestId,
+    action: 'provider_claim',
+    details: {
+      path_count: paths.length,
+      paths,
+    },
+  });
 
   try {
     const validated = await processProviderClaim(paths);
+    logEvent({
+      event: 'api.provider.request.completed',
+      message: 'Provider claim OCR API request completed successfully.',
+      status: 'success',
+      requestId,
+      action: 'provider_claim',
+    });
     return res.status(200).json(validated);
   } catch (error) {
     debug('Conversion error: %s', error.message);
+    logEvent({
+      event: 'api.provider.request.failed',
+      message: 'Provider claim OCR API request failed.',
+      status: 'error',
+      requestId,
+      action: 'provider_claim',
+      details: {
+        message: error?.message,
+      },
+    });
     return res.status(500).json({
       error: 'Failed to process OCR with LLM',
       detail: error.message,
@@ -79,20 +109,46 @@ async function preAssessmentFormJson(req, res) {
   }
 
   debug('Received pre-assessment form OCR request for %d paths', paths.length);
-  console.log('[pre_assestment_form/json] paths:', paths);
+  const requestId = `api-preaf-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  logEvent({
+    event: 'api.preaf.request.received',
+    message: 'Received API request for pre-assessment extraction.',
+    status: 'start',
+    requestId,
+    action: 'pre_assestment_form',
+    details: {
+      path_count: paths.length,
+      paths,
+    },
+  });
 
   try {
-    console.log('[pre_assestment_form/json] start processPreAssessmentForm');
-    const result = await processPreAssessmentForm(paths);
-    console.log('[pre_assestment_form/json] processPreAssessmentForm complete');
+    const result = await processPreAssessmentForm(paths, {
+      requestId,
+      action: 'pre_assestment_form',
+    });
+    logEvent({
+      event: 'api.preaf.request.completed',
+      message: 'Pre-assessment API request completed successfully.',
+      status: 'success',
+      requestId,
+      action: 'pre_assestment_form',
+    });
     return res.status(200).json(result);
   } catch (error) {
     debug('Pre-assessment form OCR error: %s', error.message);
-    console.log('[pre_assestment_form/json] error:', {
-      message: error?.message,
-      code: error?.code,
-      status: error?.status,
-      detail: error?.detail || null,
+    logEvent({
+      event: 'api.preaf.request.failed',
+      message: 'Pre-assessment API request failed.',
+      status: error?.status === 400 ? 'warning' : 'error',
+      requestId,
+      action: 'pre_assestment_form',
+      details: {
+        message: error?.message,
+        code: error?.code,
+        status: error?.status,
+        detail: error?.detail || null,
+      },
     });
     if (error.status === 400) {
       return res.status(400).json({
@@ -229,13 +285,33 @@ async function submitClaimProviderClaim(req, res) {
     return res.status(400).json({ error: 'paths must be a non-empty array of file paths' });
   }
 
+  const requestId = `api-submit-provider-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  logEvent({
+    event: 'api.provider_submit.request.received',
+    message: 'Received API request to submit provider claim.',
+    status: 'start',
+    requestId,
+    action: 'provider_claim',
+    details: {
+      path_count: paths.length,
+      paths,
+    },
+  });
+
   try {
-    console.log('[ias/submit/provider_claim] paths:', paths);
-    console.log('[ias/submit/provider_claim] start submitProviderClaimFromPaths');
     const { providerClaimResult,
     providerClaimPayload,
-    iasResponse, } = await submitProviderClaimFromPaths(paths);
-    console.log('[ias/submit/provider_claim] submitProviderClaimFromPaths complete');
+    iasResponse, } = await submitProviderClaimFromPaths(paths, {
+      requestId,
+      action: 'provider_claim',
+    });
+    logEvent({
+      event: 'api.provider_submit.request.completed',
+      message: 'Provider claim submit API request completed successfully.',
+      status: 'success',
+      requestId,
+      action: 'provider_claim',
+    });
     return res.status(200).json({
       providerClaimResult,
       providerClaimPayload,
@@ -243,11 +319,18 @@ async function submitClaimProviderClaim(req, res) {
     });
   } catch (error) {
     debug('IAS submit provider claim error: %s', error.message);
-    console.log('[ias/submit/provider_claim] error:', {
-      message: error?.message,
-      code: error?.code,
-      status: error?.status,
-      detail: error?.detail || null,
+    logEvent({
+      event: 'api.provider_submit.request.failed',
+      message: 'Provider claim submit API request failed.',
+      status: error?.status === 400 ? 'warning' : 'error',
+      requestId,
+      action: 'provider_claim',
+      details: {
+        message: error?.message,
+        code: error?.code,
+        status: error?.status,
+        detail: error?.detail || null,
+      },
     });
     const errorCode = error?.code || 'SYSTEM_ERROR';
     if (error.status === 400) {
