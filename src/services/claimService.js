@@ -89,7 +89,7 @@ async function processProviderClaim(paths) {
 
   logEvent({
     event: 'provider.ocr.image_conversion.completed',
-    message: 'Provider claim pages were converted to images.',
+    message: 'Provider claim pages were converted to images and start AI OCR Process.',
     status: 'success',
     action: 'provider_claim',
     details: {
@@ -121,12 +121,12 @@ async function processProviderClaim(paths) {
 
   const structured = extractStructuredJson(llmResponse);
 
-  logEvent({
-    event: 'provider.ocr.first_pass.completed',
-    message: 'Provider claim first OCR extraction completed.',
-    status: 'success',
-    action: 'provider_claim',
-  });
+  // logEvent({
+  //   event: 'provider.ocr.first_pass.completed',
+  //   message: 'Provider claim OCR extraction completed.',
+  //   status: 'success',
+  //   action: 'provider_claim',
+  // });
 
   // COMMENT FOR DEMO PURPOSE:
   // Skip second validation LLM pass and use first-pass structured JSON directly.
@@ -185,6 +185,9 @@ async function processProviderClaim(paths) {
     message: 'Provider claim OCR processing completed.',
     status: 'success',
     action: 'provider_claim',
+    details: {
+      ocr_json_result: secondStructured
+    },
     durationMs: Date.now() - startedAt,
   });
   return result;
@@ -258,6 +261,18 @@ async function processProviderClaimBenefitSet(paths, benefitList) {
     const imageBuffer = await fs.promises.readFile(conversion.outputPath);
     base64Images.push(imageBuffer.toString('base64'));
   }
+
+  logEvent({
+    event: 'provider.benefit_set.ai_decision.started',
+    message:
+      'Sending Member Plan benefit set to AI so it can decide the benefit_type_code and benefit_head_code for this claim record.',
+    status: 'info',
+    action: 'provider_claim',
+    details: {
+      benefit_list_count: benefitList.length,
+      image_count: base64Images.length,
+    },
+  });
 
   const llmResponse = await requestVisionSchemaCompletion({
     base64Images,
@@ -481,7 +496,7 @@ async function processPreAssessmentForm(paths, context = {}) {
     status: 'success',
     requestId,
     emailUid,
-    action,
+    action
   });
 
   const extractedHospitalName = extractedResult?.pre_admission_part_1?.hospital_name;
@@ -635,6 +650,9 @@ async function processPreAssessmentForm(paths, context = {}) {
     requestId,
     emailUid,
     action,
+    details: {
+      ocr_result: extractedResult
+    },
     durationMs: Date.now() - startedAt,
   });
   return extractedResult;
@@ -959,6 +977,13 @@ function buildIasProviderClaimPayload(mainSheet, memberInfoData) {
   const incurDateFrom = formatDateToMMddyyyy(mainSheet.incur_date_from);
   const incurDateTo = formatDateToMMddyyyy(mainSheet.incur_date_to);
 
+  logEvent({
+    event: 'provider.payload.prepare.started',
+    message: 'Preparing IAS API payload JSON for provider claim submission.',
+    status: 'info',
+    action: 'provider_claim',
+  });
+
   return {
     MemberRefNo: memberRefNo,
     isValidation: 'N',
@@ -1253,10 +1278,10 @@ async function submitProviderClaimFromPaths(paths, context = {}) {
       path_count: Array.isArray(paths) ? paths.length : 0,
     },
   });
-  console.log('Submitting provider claim for paths:', paths);
+  // console.log('Submitting provider claim for paths:', paths);
   const providerClaimResult = await processProviderClaim(paths);
 
-  console.log('Provider Claim OCR Result:', providerClaimResult);
+  // console.log('Provider Claim OCR Result:', providerClaimResult);
   const documentSourceSummary = providerClaimResult?.document_source_summary || {};
   const documentStatus = String(documentSourceSummary.status || '').trim().toLowerCase();
   const isCompleted =
@@ -1266,8 +1291,8 @@ async function submitProviderClaimFromPaths(paths, context = {}) {
   logEvent({
     event: 'provider.document_check.completed',
     message: isCompleted
-      ? 'Required provider claim documents are complete.'
-      : 'Provider claim documents are incomplete.',
+      ? 'Required post treatment claim documents are complete.'
+      : 'Provider post treatment documents are incomplete.',
     status: isCompleted ? 'success' : 'warning',
     requestId,
     emailUid,

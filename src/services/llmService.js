@@ -366,20 +366,20 @@ function extractStructuredJson(llmResponse) {
     }
 
     if (typeof normalized === 'string') {
-      console.log('Error parsing JSON:', lastError);
-      console.log('Repaired JSON:', attempts[attempts.length - 1]);
+      // console.log('Error parsing JSON:', lastError);
+      // console.log('Repaired JSON:', attempts[attempts.length - 1]);
     }
     throw lastError || new Error('Unable to parse LLM JSON response');
   };
 
   const content = choice.message?.content;
-  console.log('LLM message', choice.message)
-  console.log('LLM Response Content:', content);
+  // console.log('LLM message', choice.message)
+  // console.log('LLM Response Content:', content);
 
   if (typeof content === 'string') {
-    console.log('Json String Content Return');
+    // console.log('Json String Content Return');
     const jsonResult = parseJsonWithRepair(content);
-    console.log('Parsed JSON Result:', jsonResult);
+    // console.log('Parsed JSON Result:', jsonResult);
     return jsonResult;
   }
 

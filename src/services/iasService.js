@@ -1,6 +1,7 @@
 const createDebug = require('debug');
 const fs = require('fs');
 const path = require('path');
+const { logEvent } = require('./logEventService');
 
 const debug = createDebug('app:service:ias');
 
@@ -24,8 +25,17 @@ async function postMemberInfoByPolicy({ memberNrc, meplEffDate }) {
   }
 
   const url = buildIasUrl(process.env.GET_MEMBER_INFO_API);
-  console.log('IAS URL:', url);
-  console.log('IAS Payload:', JSON.stringify({ memberNrc, meplEffDate }));
+  logEvent({
+    event: 'ias.member_info.request.started',
+    message: 'Calling IAS member information API using memberNrc and meplEffDate.',
+    status: 'info',
+    action: 'ias_member_info',
+    details: {
+      memberNrc,
+      meplEffDate,
+      endpoint: url,
+    },
+  });
   const response = await fetch(url, {
     method: 'POST',
     headers: {
@@ -71,7 +81,17 @@ async function postClaimSubmission(payload) {
   }
 
   const url = buildIasUrl(process.env.CL_CLAIM_API);
-  console.log('IAS Claim Submission URL:', url);
+  logEvent({
+    event: 'ias.provider_claim.submission.started',
+    message: 'Submitting IAS Provider New Claim API request.',
+    status: 'info',
+    action: 'ias_provider_new_claim',
+    details: {
+      endpoint: url,
+      item_count: Array.isArray(payload?.Items) ? payload.Items.length : 0,
+    },
+  });
+  // console.log('IAS Claim Submission URL:', url);
   const response = await fetch(url, {
     method: 'POST',
     headers: {
@@ -80,7 +100,7 @@ async function postClaimSubmission(payload) {
     },
     body: JSON.stringify(payload),
   });
-  console.log('IAS Claim Submission Payload:', JSON.stringify(payload));
+  // console.log('IAS Claim Submission Payload:', JSON.stringify(payload));
 
   const text = await response.text();
   let data = null;
@@ -92,7 +112,7 @@ async function postClaimSubmission(payload) {
       data = { raw: text };
     }
   }
-  console.log('IAS Claim Submission Response:', data);
+  // console.log('IAS Claim Submission Response:', data);
 
   if (!response.ok) {
     const detail = data || { raw: text };

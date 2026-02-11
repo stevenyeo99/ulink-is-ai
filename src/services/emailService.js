@@ -487,12 +487,12 @@ async function fetchUnseenEmails({ mailbox = 'INBOX', limit } = {}) {
             },
           });
           const { decision, rawResponse } = await decideEmailAction(decisionInput);
-          console.log('[email-decision]', {
-            subject: decisionInput.subject,
-            action: decision?.action || null,
-            reason: decision?.reason || null,
-            confidence: decision?.confidence || null,
-          });
+          // console.log('[email-decision]', {
+          //   subject: decisionInput.subject,
+          //   action: decision?.action || null,
+          //   reason: decision?.reason || null,
+          //   confidence: decision?.confidence || null,
+          // });
           logEvent({
             event: 'flow.decision.completed',
             message: `This email was identified as ${decision?.action || 'no_action'}.`,
