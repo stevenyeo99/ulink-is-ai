@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JD1 and JD2 Automation Flow Review</title>
+  <style>
+    :root {
+      --ink: #1f2937;
+      --muted: #4b5563;
+      --line: #d1d5db;
+      --soft: #f3f4f6;
+      --soft-2: #e5e7eb;
+      --accent: #0f766e;
+      --accent-soft: #ccfbf1;
+      --warn: #9a3412;
+      --warn-soft: #ffedd5;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--ink);
+      background: white;
+      line-height: 1.45;
+      font-size: 13px;
+    }
+
+    .page {
+      width: 100%;
+      max-width: 1020px;
+      margin: 0 auto;
+      padding: 34px 40px 48px;
+    }
+
+    h1, h2, h3 {
+      margin: 0 0 10px;
+      line-height: 1.2;
+    }
+
+    h1 {
+      font-size: 28px;
+      letter-spacing: -0.02em;
+    }
+
+    h2 {
+      font-size: 18px;
+      margin-top: 28px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid var(--soft-2);
+    }
+
+    h3 {
+      font-size: 15px;
+      margin-top: 18px;
+    }
+
+    p {
+      margin: 0 0 10px;
+    }
+
+    ul, ol {
+      margin: 8px 0 12px 20px;
+      padding: 0;
+    }
+
+    li {
+      margin: 4px 0;
+    }
+
+    .hero {
+      padding: 24px 26px;
+      background: linear-gradient(135deg, #ecfeff, #f0fdf4);
+      border: 1px solid #c7f9f1;
+      border-radius: 14px;
+    }
+
+    .hero p {
+      color: var(--muted);
+      max-width: 780px;
+    }
+
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .meta-card {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: white;
+    }
+
+    .meta-card strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 12px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px 18px;
+      background: white;
+    }
+
+    .card h3 {
+      margin-top: 0;
+    }
+
+    .callout {
+      margin: 14px 0;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid #a7f3d0;
+      background: var(--accent-soft);
+    }
+
+    .warn {
+      border-color: #fdba74;
+      background: var(--warn-soft);
+    }
+
+    .flow {
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+
+    .flow-head {
+      padding: 12px 14px;
+      background: var(--soft);
+      border-bottom: 1px solid var(--line);
+      font-weight: 700;
+    }
+
+    .flow-body {
+      padding: 14px;
+      background: white;
+    }
+
+    .step {
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      margin: 8px 0;
+      background: #fafafa;
+    }
+
+    .chart {
+      margin-top: 12px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: white;
+    }
+
+    .chart-row {
+      display: flex;
+      gap: 12px;
+      align-items: stretch;
+      margin: 8px 0;
+    }
+
+    .chart-node {
+      flex: 1;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fafafa;
+      min-height: 54px;
+    }
+
+    .chart-node strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .chart-node.decision {
+      background: #fff7ed;
+      border-color: #fdba74;
+    }
+
+    .chart-node.success {
+      background: #ecfdf5;
+      border-color: #86efac;
+    }
+
+    .chart-node.fail {
+      background: #fef2f2;
+      border-color: #fca5a5;
+    }
+
+    .chart-arrow {
+      text-align: center;
+      color: var(--accent);
+      font-weight: 700;
+      margin: 4px 0;
+    }
+
+    .arrow {
+      color: var(--accent);
+      font-weight: 700;
+      margin: 0 0 0 4px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    th, td {
+      border: 1px solid var(--line);
+      padding: 10px 11px;
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th {
+      background: var(--soft);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    code {
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 12px;
+      background: #f3f4f6;
+      padding: 1px 4px;
+      border-radius: 4px;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .footer {
+      margin-top: 30px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    @media print {
+      .page {
+        max-width: none;
+        padding: 22px 28px 30px;
+      }
+
+      h2, .card, .flow, table {
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero">
+      <h1>JD1 and JD2 Automation Flow Review</h1>
+      <p>
+        This review pack consolidates the current automation-flow documents under <code>docs/automation-flow</code>
+        into one file for stakeholder review. It is intended to confirm the proposed ownership split, handover
+        boundary, and main automation control points before implementation.
+      </p>
+      <div class="meta">
+        <div class="meta-card">
+          <strong>JD1 Scope</strong>
+          Intake, OCR, pre-assessment, Console upload, and handover to JD2.
+        </div>
+        <div class="meta-card">
+          <strong>JD2 Scope</strong>
+          Claim preparation, IAS create or revise logic, and final status handling.
+        </div>
+        <div class="meta-card">
+          <strong>Handover Rule</strong>
+          JD2 starts only after JD1 marks the case ready and upload is verified.
+        </div>
+      </div>
+    </section>
+
+    <h2>1. Review Objective</h2>
+    <p>
+      The target operating model is to keep JD1 and JD2 as related but distinct automation stages.
+      JD1 is responsible for turning an incoming case into a validated, uploaded, JD2-ready package.
+      JD2 is responsible for turning that package into a valid IAS claim submission or provider-claim revision.
+    </p>
+
+    <div class="callout">
+      <strong>Core design decision:</strong> OCR and intake stay in JD1. Claim creation and amendment stay in JD2.
+    </div>
+
+    <h2>2. Scope Split</h2>
+    <div class="grid-2">
+      <div class="card">
+        <h3>JD1 Responsibilities</h3>
+        <ul>
+          <li>Poll eligible Freshdesk or email cases for JD1 processing.</li>
+          <li>Download attachments and retrieve large files when needed.</li>
+          <li>Normalize files and run OCR plus first-pass extraction.</li>
+          <li>Check document completeness and basic readiness.</li>
+          <li>Send missing-document requests or escalate exception cases.</li>
+          <li>Upload validated documents into Console via VM SFTP or API.</li>
+          <li>Create the JD2-ready handover package and update status.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>JD2 Responsibilities</h3>
+        <ul>
+          <li>Consume only JD1-approved and JD1-uploaded cases.</li>
+          <li>Validate handover data for claim-processing purposes.</li>
+          <li>Prepare IAS claim fields, fee lines, and coding inputs.</li>
+          <li>Check coverage, NOC, and claim-processing rules.</li>
+          <li>Run create-new-claim or revise-existing-claim logic.</li>
+          <li>Update IAS statuses and Freshdesk audit notes.</li>
+          <li>Mark the JD2 case completed or route to manual review.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2>3. End-to-End View</h2>
+    <div class="flow">
+      <div class="flow-head">High-Level Automation Sequence</div>
+      <div class="flow-body">
+        <div class="step">JD1 intake and attachment retrieval <span class="arrow">-></span> OCR and pre-assessment</div>
+        <div class="step">If incomplete or invalid: missing-document workflow or escalation</div>
+        <div class="step">If valid: upload documents to Console and verify success</div>
+        <div class="step">Create JD2-ready handover package <span class="arrow">-></span> JD2 consumes approved case</div>
+        <div class="step">JD2 validates claim-processing requirements and builds IAS claim payload</div>
+        <div class="step">If no existing provider claim number: create new IAS claim</div>
+        <div class="step">If existing trusted provider claim number: revise existing IAS claim</div>
+        <div class="step">Update IAS status and Freshdesk note <span class="arrow">-></span> complete or manual review</div>
+      </div>
+    </div>
+
+    <h2>4. JD1 Flow Summary</h2>
+    <p>
+      JD1 is the intake and pre-assessment stage. It should determine whether a case is complete enough to move
+      forward, and it should upload validated documents into Console before handover.
+    </p>
+    <div class="chart">
+      <h3>JD1 Review Flow Chart</h3>
+      <div class="chart-row">
+        <div class="chart-node"><strong>Start JD1 Cron</strong>Poll eligible Freshdesk tickets assigned to JD1 automation.</div>
+      </div>
+      <div class="chart-arrow">↓</div>
+      <div class="chart-row">
+        <div class="chart-node"><strong>Retrieve Case Data</strong>Download email body, metadata, and attachments.</div>
+        <div class="chart-node"><strong>File Preparation</strong>Fetch large files if needed, normalize files, and prepare working copies.</div>
+      </div>
+      <div class="chart-arrow">↓</div>
+      <div class="chart-row">
+        <div class="chart-node"><strong>OCR and Extraction</strong>Run OCR and first-pass field extraction on the normalized files.</div>
+      </div>
+      <div class="chart-arrow">↓</div>
+      <div class="chart-row">
+        <div class="chart-node decision"><strong>Documents Complete?</strong>If missing, unclear, or unsupported, JD1 requests documents and stops.</div>
+        <div class="chart-node decision"><strong>Pre-assessment Pass?</strong>If policy, member, or escalation issues exist, JD1 routes to manual review.</div>
+      </div>
+      <div class="chart-arrow">If pass ↓</div>
+      <div class="chart-row">
+        <div class="chart-node"><strong>Build Handover Package</strong>Save extracted fields, metadata, and validated working copies.</div>
+      </div>
+      <div class="chart-arrow">↓</div>
+      <div class="chart-row">
+        <div class="chart-node"><strong>Upload to Console</strong>Upload case documents through VM SFTP or API.</div>
+        <div class="chart-node decision"><strong>Upload Verified?</strong>If upload fails, route to <code>JD1 - Upload Exception</code>.</div>
+      </div>
+      <div class="chart-arrow">If success ↓</div>
+      <div class="chart-row">
+        <div class="chart-node success"><strong>JD1 Ready for JD2</strong>Store Console references, update Freshdesk note, and mark queue item ready for JD2.</div>
+      </div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Stage</th>
+          <th>Expected JD1 Outcome</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Case selection</td>
+          <td>Only eligible JD1 tickets are picked. Duplicate or manual-only cases are skipped.</td>
+        </tr>
+        <tr>
+          <td>Attachment handling</td>
+          <td>Attachments are downloaded, normalized, and made available for OCR.</td>
+        </tr>
+        <tr>
+          <td>OCR and extraction</td>
+          <td>First-pass document data is extracted for completeness and readiness checks.</td>
+        </tr>
+        <tr>
+          <td>Pre-assessment</td>
+          <td>JD1 decides whether the case is missing documents, needs escalation, or is handover-ready.</td>
+        </tr>
+        <tr>
+          <td>Console upload</td>
+          <td>Validated documents are uploaded and verified. Upload failure stops straight-through handover.</td>
+        </tr>
+        <tr>
+          <td>Handover</td>
+          <td>JD1 creates a structured handover package and sets the case to <code>JD1 - Ready for JD2</code>.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout warn">
+      <strong>Important JD1 boundary:</strong> JD1 does not prepare claim lines, apply claim coding,
+      or create or revise the IAS claim record.
+    </div>
+
+    <h2>5. JD2 Flow Summary</h2>
+    <p>
+      JD2 starts only after JD1 handover is complete. JD2 should not redo the raw intake workflow. Its job is to
+      turn the approved case package into a valid IAS transaction.
+    </p>
+    <div class="chart">
+      <h3>JD2 Review Flow Chart</h3>
+      <div class="chart-row">
+        <div class="chart-node"><strong>Start JD2 Cron</strong>Poll only JD2-ready cases and acquire processing lock.</div>
+      </div>
+      <div class="chart-arrow">↓</div>
+      <div class="chart-row">
+        <div class="chart-node"><strong>Load JD1 Handover</strong>Read extracted fields, normalized documents, and Console upload references.</div>
+      </div>
+      <div class="chart-arrow">↓</div>
+      <div class="chart-row">
+        <div class="chart-node decision"><strong>Handover Complete?</strong>If the package is incomplete or contradictory, stop for manual review.</div>
+      </div>
+      <div class="chart-arrow">If pass ↓</div>
+      <div class="chart-row">
+        <div class="chart-node"><strong>Claim-entry Validation</strong>Validate treatment dates, diagnosis, identifiers, coverage, and NOC rules.</div>
+      </div>
+      <div class="chart-arrow">↓</div>
+      <div class="chart-row">
+        <div class="chart-node"><strong>Build Claim Lines</strong>Split lines by treatment date and fee category, then apply claim logic.</div>
+        <div class="chart-node"><strong>Apply JD2 Rules</strong>Run vitamins and supplements checks plus suspend, reject, and remark logic where relevant.</div>
+      </div>
+      <div class="chart-arrow">↓</div>
+      <div class="chart-row">
+        <div class="chart-node decision"><strong>Existing Provider Claim No?</strong>If yes, follow revision logic. If no, create a new claim.</div>
+      </div>
+      <div class="chart-arrow">↓</div>
+      <div class="chart-row">
+        <div class="chart-node"><strong>New Claim Path</strong>Prepare and submit a new IAS claim payload.</div>
+        <div class="chart-node"><strong>Revision Path</strong>Prepare amendment payload and revise the existing IAS claim.</div>
+      </div>
+      <div class="chart-arrow">↓</div>
+      <div class="chart-row">
+        <div class="chart-node"><strong>Post-submission Actions</strong>Verify claim identifiers, complete payment fields, and update RA or PV status.</div>
+      </div>
+      <div class="chart-arrow">↓</div>
+      <div class="chart-row">
+        <div class="chart-node success"><strong>JD2 Completed</strong>Update Freshdesk properties and audit notes, then mark the case completed.</div>
+      </div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Stage</th>
+          <th>Expected JD2 Outcome</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Handover intake</td>
+          <td>JD2 loads the JD1 package, including extracted fields, normalized documents, and Console references.</td>
+        </tr>
+        <tr>
+          <td>Claim-entry validation</td>
+          <td>JD2 validates treatment dates, diagnosis, identifiers, coverage, and NOC requirements.</td>
+        </tr>
+        <tr>
+          <td>Claim building</td>
+          <td>JD2 builds line-level claim items and applies claim-specific rules and exclusions.</td>
+        </tr>
+        <tr>
+          <td>IAS processing</td>
+          <td>JD2 either creates a new IAS claim or revises an existing provider claim.</td>
+        </tr>
+        <tr>
+          <td>Completion</td>
+          <td>JD2 verifies final identifiers, updates statuses, and records audit notes.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>6. JD1 to JD2 Handover Contract</h2>
+    <p>
+      JD2 should receive a structured handover package rather than reprocessing the raw email thread from scratch.
+      The minimum fields currently proposed are below.
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>Field</th>
+          <th>Purpose</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>freshdesk_ticket_id</code></td>
+          <td>Primary case reference across JD1 and JD2.</td>
+        </tr>
+        <tr>
+          <td><code>case_type</code></td>
+          <td>Supported flow classification such as provider claim or reimbursement claim.</td>
+        </tr>
+        <tr>
+          <td><code>jd1_status</code></td>
+          <td>Expected to indicate that the case is ready for JD2.</td>
+        </tr>
+        <tr>
+          <td><code>handover_version</code></td>
+          <td>Supports reprocessing when a case changes and helps prevent duplicates.</td>
+        </tr>
+        <tr>
+          <td><code>source_email_metadata</code></td>
+          <td>Retains sender, subject, thread, and intake context.</td>
+        </tr>
+        <tr>
+          <td><code>normalized_document_paths</code></td>
+          <td>References to the validated working copies prepared by JD1.</td>
+        </tr>
+        <tr>
+          <td><code>ocr_result</code></td>
+          <td>OCR JSON or reference to OCR output generated by JD1.</td>
+        </tr>
+        <tr>
+          <td><code>extracted_fields</code></td>
+          <td>First-pass document fields used by JD2 as primary input.</td>
+        </tr>
+        <tr>
+          <td><code>document_completeness_result</code></td>
+          <td>Indicates what JD1 checked and whether the case passed pre-assessment.</td>
+        </tr>
+        <tr>
+          <td><code>console_upload_refs</code></td>
+          <td>Uploaded file identifiers or references needed for downstream traceability.</td>
+        </tr>
+        <tr>
+          <td><code>existing_claim_no</code></td>
+          <td>Signals whether JD2 should consider provider-claim revision logic.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>7. Control Points and Risk Gates</h2>
+    <div class="grid-2">
+      <div class="card">
+        <h3>Control Points</h3>
+        <ul>
+          <li>Prevent duplicate processing across cron runs.</li>
+          <li>Block JD2 until JD1 upload is verified.</li>
+          <li>Version the handover when new files or new data arrive.</li>
+          <li>Keep create-versus-revise logic explicit in JD2.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Risk Gates</h3>
+        <ul>
+          <li>Missing or unsupported attachments.</li>
+          <li>Pre-assessment mismatch or escalation case.</li>
+          <li>Console upload failure.</li>
+          <li>Coverage, NOC, or policy issue in JD2.</li>
+          <li>IAS submission or amendment failure.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2>8. Suggested Statuses</h2>
+    <ul>
+      <li><code>JD1 - Pending Documents</code></li>
+      <li><code>JD1 - Escalation</code></li>
+      <li><code>JD1 - Upload Exception</code></li>
+      <li><code>JD1 - Ready for JD2</code></li>
+      <li><code>JD2 - Processing</code></li>
+      <li><code>JD2 - Manual Review</code></li>
+      <li><code>JD2 - Completed</code></li>
+    </ul>
+
+    <h2>9. Source Documents Included in This Review</h2>
+    <ul>
+      <li><code>docs/automation-flow/jd1-automation-flow.md</code></li>
+      <li><code>docs/automation-flow/jd2-automation-flow.md</code></li>
+      <li><code>docs/automation-flow/jd1-to-jd2-automation-flow.md</code></li>
+    </ul>
+
+    <div class="footer">
+      Prepared from the current automation-flow drafts for stakeholder review. This PDF is a consolidated review pack,
+      not yet a final implementation specification or API schema.
+    </div>
+  </div>
+</body>
+</html>
